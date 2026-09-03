@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#083f36"><title>GAMOT Providers | PhilHealth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar"><div class="brand"><div class="brand-mark">✚</div><div><strong>GAMOT</strong><span>PhilHealth provider locator</span></div></div><div class="status"><i></i> Service directory <span class="desktop">· Updated regularly</span></div></header>
+<main class="app-shell">
+<section class="hero"><div><p class="eyebrow">HEALTHCARE, CLOSER TO HOME</p><h1>Find a GAMOT<br><em>provider near you.</em></h1><p class="intro">Search accredited providers, compare what’s nearby, and get directions in a few taps.</p></div><div class="hero-badge"><span>PH</span><small>PhilHealth<br>GAMOT package</small></div></section>
+<section class="search-panel"><div class="search-row"><label class="searchbox"><span>⌕</span><input id="search" placeholder="Search provider, city, or province" autocomplete="off"><button id="clear" aria-label="Clear search">×</button></label><button class="locate" id="locate">⌖ <span>Use my location</span></button></div><div class="filter-row"><span class="result-count" id="resultCount">Showing all providers</span><div class="filters"><button class="filter active" data-filter="all">All providers</button><button class="filter" data-filter="pharmacy">Pharmacy</button><button class="filter" data-filter="clinic">Clinic</button><button class="filter" data-filter="hospital">Hospital</button></div></div></section>
+<div class="content"><aside class="results"><div id="locationNotice" class="notice hidden"></div><div id="cards"></div><div id="empty" class="empty hidden"><div>⌕</div><h3>No providers found</h3><p>Try a different city, province, or provider name.</p></div></aside><section class="map-wrap"><div id="map"></div><div class="map-key"><span><i class="pin green"></i> Provider</span><span><i class="pin blue"></i> Your location</span></div><div class="map-tip" id="mapTip"><b>Select a provider</b><br><span>Choose a result to view details and directions</span></div></section></div>
+</main><div class="modal hidden" id="routeModal"><div class="modal-card"><button class="modal-close" id="closeModal">×</button><p class="eyebrow">YOUR ROUTE</p><h2 id="routeTitle">Directions</h2><div class="route-summary"><b id="routeDistance">—</b><span id="routeTime">Calculating route…</span></div><div id="routeSteps" class="steps"></div><a id="openMaps" class="primary" target="_blank" rel="noopener">Open in Google Maps ↗</a></div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="app.js"></script>
+</body></html>
