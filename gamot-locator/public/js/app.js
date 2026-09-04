@@ -15,6 +15,7 @@ const state = {
   markersById: {},     // provider id -> Leaflet marker (for popups/highlight)
   userPos: null,       // { lat, lon, accuracy }
   userMarker: null,
+  userAccuracy: null,  // accuracy circle layer
   routeLayer: null,    // L.LayerGroup for the active route
   routeSteps: [],      // parsed steps for turn-by-turn
   watchId: null,
@@ -96,7 +97,7 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = "1.3.1";
+const APP_VERSION = "1.3.2";
 
 const TILE_PROVIDERS = [
   {
@@ -402,13 +403,40 @@ function startWatch() {
 function placeUserMarker() {
   if (!state.userPos) return;
   if (!state.userMarker) {
+    const icon = L.divIcon({
+      className: 'user-marker-wrap',
+      html: '<span class="user-marker"></span><span class="user-label">You are here</span>',
+      iconSize: [90, 44],
+      iconAnchor: [45, 9],
+    });
     state.userMarker = L.marker([state.userPos.lat, state.userPos.lon], {
-      icon: L.divIcon({ className: '', html: '<span class="user-marker" style="width:14px;height:14px;display:block;"></span>', iconSize: [14, 14], iconAnchor: [7, 7] }),
+      icon,
       zIndexOffset: 1000,
+      interactive: false,
     }).addTo(state.map);
+    state.userMarker.bindTooltip('Your current location', {
+      permanent: false, direction: 'top', offset: [0, -18],
+    });
   } else {
     state.userMarker.setLatLng([state.userPos.lat, state.userPos.lon]);
   }
+
+  // Accuracy circle showing the GPS uncertainty radius
+  const radius = Math.max(state.userPos.accuracy || 0, 10);
+  if (state.userAccuracy) {
+    state.userAccuracy.setLatLng([state.userPos.lat, state.userPos.lon]);
+    state.userAccuracy.setRadius(radius);
+  } else {
+    state.userAccuracy = L.circle([state.userPos.lat, state.userPos.lon], {
+      radius,
+      className: 'user-accuracy',
+      interactive: false,
+      weight: 2,
+    }).addTo(state.map);
+  }
+
+  // (The user marker's zIndexOffset:1000 already keeps it above the
+  //  provider markers and accuracy circle.)
 }
 
 function showNearest() {

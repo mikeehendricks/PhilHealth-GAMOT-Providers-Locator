@@ -275,19 +275,83 @@ html, body {
 .marker-dot.gov { background: var(--gov); }
 .marker-dot.selected { background: #ff8a00; }
 
+/* "You are here" — the user's real-time location. Distinct fuchsia color so it
+   can never be confused with the blue (private) or green (government) pins. */
 .user-marker {
-  background: #0d6efd; border: 3px solid #fff; border-radius: 50%;
-  box-shadow: 0 0 0 4px rgba(13,110,253,0.25);
+  display: block;
+  width: 18px; height: 18px;
+  background: #d946ef;              /* fuchsia — distinct from providers */
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(217, 70, 239, 0.35);
 }
 .user-marker::after {
-  content: ""; position: absolute; inset: -12px; border-radius: 50%;
-  border: 2px solid rgba(13,110,253,0.4);
+  content: "";
+  position: absolute; inset: -14px; border-radius: 50%;
+  border: 3px solid rgba(217, 70, 239, 0.55);
   animation: pulse 2s ease-out infinite;
 }
 @keyframes pulse {
   0% { transform: scale(0.6); opacity: 1; }
   100% { transform: scale(1.6); opacity: 0; }
 }
+
+/* Accuracy circle around the user location (semi-transparent) */
+.user-accuracy {
+  stroke: #d946ef;
+  stroke-width: 2;
+  fill: rgba(217, 70, 239, 0.12);
+}
+
+/* "You are here" label under the user dot */
+.user-marker-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 90px;
+  text-align: center;
+}
+.user-label {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #a21caf;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 1px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  letter-spacing: .02em;
+}
+
+/* ---------------- Map legend ---------------- */
+.map-legend {
+  position: absolute; z-index: 1000;
+  right: 12px; bottom: 34px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.legend-title {
+  font-weight: 700; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--muted);
+  margin-bottom: 6px;
+}
+.legend-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.legend-swatch {
+  flex: 0 0 auto; width: 13px; height: 13px;
+  border-radius: 50%; border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+}
+.legend-you { background: #d946ef; box-shadow: 0 0 0 3px rgba(217,70,239,0.3); }
+.legend-private { background: var(--primary); }
+.legend-gov { background: var(--gov); }
+.legend-label { color: var(--text); }
 
 /* ---------------- Toast ---------------- */
 .toast-container {
