@@ -89,6 +89,10 @@ async function init() {
   addAllMarkers();
   updateResultsCount();
   $('loading').hidden = true;
+  // Re-measure the map once everything is laid out (fonts, sidebar, etc.) so
+  // no grey strip is left un-rendered on first paint.
+  setTimeout(refreshMapSize, 100);
+  setTimeout(refreshMapSize, 400);
 }
 
 // ---------------------------------------------------------------------------
@@ -97,7 +101,7 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = "1.4.1";
+const APP_VERSION = "1.4.2";
 
 // Classic teardrop "location pin" for the user's real-time position.
 // Fuchsia so it never gets confused with the blue/green provider pins.
@@ -728,6 +732,14 @@ function openSidebar() {
 function closeSidebar() {
   document.body.classList.remove('sidebar-open');
 }
+function refreshMapSize() {
+  // Tell Leaflet to re-measure its container and re-render tiles. Needed
+  // whenever the map's container changes size (sidebar collapse/expand, window
+  // resize, device rotation) — otherwise a grey strip (the container's #ddd
+  // background) shows where tiles haven't been drawn yet.
+  if (state.map) state.map.invalidateSize({ animate: false });
+}
+
 function toggleSidebar() {
   if (isMobile()) {
     // Mobile: toggle the slide-up bottom sheet
@@ -735,13 +747,18 @@ function toggleSidebar() {
   } else {
     // Desktop: collapse/expand the sidebar (map expands to fill the space)
     document.body.classList.toggle('sidebar-hidden');
+    // Re-render after the sidebar transition finishes (250ms in CSS).
+    setTimeout(refreshMapSize, 280);
   }
 }
 
 // Keep state consistent when the window crosses the mobile/desktop breakpoint
 // (e.g. rotating a phone or resizing a laptop window).
+let resizeTimer = null;
 window.addEventListener('resize', () => {
   if (!isMobile()) document.body.classList.remove('sidebar-open');
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(refreshMapSize, 150);
 });
 
 // ---------------------------------------------------------------------------
