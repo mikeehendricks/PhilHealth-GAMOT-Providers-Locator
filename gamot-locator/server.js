@@ -88,9 +88,18 @@ function serveStatic(res, pathname) {
       return;
     }
     const ext = path.extname(filePath).toLowerCase();
+    let cacheControl;
+    if (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.mjs') {
+      // HTML/JS/CSS should never be stale-cached (esp. behind a CDN like
+      // Cloudflare) so code updates propagate immediately.
+      cacheControl = 'no-cache, no-store, must-revalidate';
+    } else {
+      // Static media (images, fonts) can be cached aggressively.
+      cacheControl = 'public, max-age=604800, immutable';
+    }
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600',
+      'Cache-Control': cacheControl,
     });
     res.end(data);
   });

@@ -254,6 +254,11 @@ html, body {
   font-size: 10px; color: #64748b; background: rgba(255,255,255,0.8);
   padding: 1px 6px; border-radius: 4px; pointer-events: none;
 }
+.version-note {
+  position: absolute; z-index: 1000; left: 8px; bottom: 4px;
+  font-size: 10px; color: #64748b; background: rgba(255,255,255,0.8);
+  padding: 1px 6px; border-radius: 4px; pointer-events: none;
+}
 
 /* user / selected marker styles */
 .marker-dot {
