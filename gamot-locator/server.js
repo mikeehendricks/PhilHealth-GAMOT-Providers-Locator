@@ -24,8 +24,66 @@ const { URL } = require('url');
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const OSRM_URL = (process.env.OSRM_URL || 'https://router.project-osrm.org').replace(/\/+$/, '');
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const PUBLIC_DIR = path.resolve(__dirname, 'public');
 const PROVIDERS_PATH = path.join(__dirname, 'data', 'providers.json');
+
+// ---------------------------------------------------------------------------
+// Security headers applied to every response
+// ---------------------------------------------------------------------------
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'geolocation=(self), camera=(), microphone=(), payment=()',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self'",
+    "connect-src 'self' https://router.project-osrm.org https://tile.openstreetmap.org https://server.arcgisonline.com",
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join('; '),
+};
+
+// ---------------------------------------------------------------------------
+// Simple in-memory rate limiter (per IP + route bucket)
+// ---------------------------------------------------------------------------
+const rateBuckets = new Map(); // key -> { start, count }
+const RATE_LIMITS = {
+  route: { limit: 30, windowMs: 60 * 1000 },      // OSRM proxy — expensive, external call
+  providers: { limit: 120, windowMs: 60 * 1000 }, // provider list search
+};
+
+function rateLimitHit(key, bucket) {
+  const now = Date.now();
+  let rec = rateBuckets.get(key);
+  if (!rec || now - rec.start > bucket.windowMs) {
+    rec = { start: now, count: 0 };
+    rateBuckets.set(key, rec);
+  }
+  rec.count++;
+  return rec.count > bucket.limit;
+}
+
+// Periodically purge stale rate-limit entries to avoid unbounded memory growth.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, rec] of rateBuckets) {
+    if (now - rec.start > 120 * 1000) rateBuckets.delete(key);
+  }
+}, 5 * 60 * 1000).unref();
+
+function clientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (typeof xff === 'string' && xff.length) {
+    return xff.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
 
 // ---------------------------------------------------------------------------
 // Static file serving
@@ -55,21 +113,25 @@ function sendJSON(res, status, obj) {
     'Content-Length': Buffer.byteLength(body),
     'Cache-Control': 'no-store',
     'Access-Control-Allow-Origin': '*',
+    ...SECURITY_HEADERS,
   });
   res.end(body);
 }
 
 function sendText(res, status, text) {
-  res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.writeHead(status, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    ...SECURITY_HEADERS,
+  });
   res.end(text);
 }
 
-function serveStatic(res, pathname) {
-  // Prevent path traversal
+function serveStatic(res, pathname, isHead) {
+  // Prevent path traversal: resolve and confirm the result stays inside PUBLIC_DIR.
   let rel = pathname.replace(/^\/+/, '');
   if (rel === '') rel = 'index.html';
-  const filePath = path.normalize(path.join(PUBLIC_DIR, rel));
-  if (!filePath.startsWith(PUBLIC_DIR)) {
+  const filePath = path.resolve(PUBLIC_DIR, rel);
+  if (filePath !== PUBLIC_DIR && !filePath.startsWith(PUBLIC_DIR + path.sep)) {
     sendText(res, 403, 'Forbidden');
     return;
   }
@@ -79,8 +141,8 @@ function serveStatic(res, pathname) {
       if (err.code === 'ENOENT' && !path.extname(filePath)) {
         fs.readFile(path.join(PUBLIC_DIR, 'index.html'), (err2, html) => {
           if (err2) return sendText(res, 404, 'Not Found');
-          res.writeHead(200, { 'Content-Type': MIME['.html'] });
-          res.end(html);
+          res.writeHead(200, { 'Content-Type': MIME['.html'], ...SECURITY_HEADERS });
+          res.end(isHead ? undefined : html);
         });
         return;
       }
@@ -100,8 +162,9 @@ function serveStatic(res, pathname) {
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
       'Cache-Control': cacheControl,
+      ...SECURITY_HEADERS,
     });
-    res.end(data);
+    res.end(isHead ? undefined : data);
   });
 }
 
@@ -123,7 +186,7 @@ function norm(s) {
 
 function apiProviders(res, query) {
   let list = loadProviders();
-  const q = query.get('q');
+  const q = (query.get('q') || '').slice(0, 200); // cap search length
   const province = query.get('province');
   const city = query.get('city');
   const region = query.get('region');
@@ -159,6 +222,8 @@ function apiProviders(res, query) {
   }
 
   let limit = parseInt(query.get('limit') || '0', 10);
+  if (isNaN(limit) || limit < 0) limit = 0;
+  limit = Math.min(limit, 500); // clamp to a sane maximum
   const total = list.length;
   if (limit > 0 && limit < list.length) list = list.slice(0, limit);
 
@@ -168,25 +233,38 @@ function apiProviders(res, query) {
 // ---------------------------------------------------------------------------
 // Routing proxy (OSRM) — tries a list of endpoints in order, returns JSON.
 // ---------------------------------------------------------------------------
+const ALLOWED_PROFILES = new Set(['driving', 'walking', 'cycling']);
+
 function apiRoute(res, query) {
   const from = query.get('from'); // "lat,lon"
   const to = query.get('to'); // "lat,lon"
-  const profile = query.get('profile') || 'driving';
+  const profile = (query.get('profile') || 'driving').toLowerCase();
 
   if (!from || !to) {
     sendJSON(res, 400, { error: 'Missing "from" or "to" parameters (lat,lon)' });
     return;
   }
+  // Whitelist the profile to prevent path/query injection into the upstream URL.
+  if (!ALLOWED_PROFILES.has(profile)) {
+    sendJSON(res, 400, { error: 'Invalid profile. Use driving, walking, or cycling.' });
+    return;
+  }
 
+  const NUM_RE = /^-?\d{1,3}(\.\d+)?$/;
   const parseCoord = (s) => {
-    const parts = s.split(',').map((x) => parseFloat(x));
-    if (parts.length !== 2 || parts.some((x) => isNaN(x))) return null;
-    return { lat: parts[0], lon: parts[1] };
+    const parts = String(s).split(',');
+    if (parts.length !== 2) return null;
+    if (!NUM_RE.test(parts[0].trim()) || !NUM_RE.test(parts[1].trim())) return null;
+    const lat = parseFloat(parts[0]);
+    const lon = parseFloat(parts[1]);
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+    return { lat, lon };
   };
   const f = parseCoord(from);
   const t = parseCoord(to);
   if (!f || !t) {
-    sendJSON(res, 400, { error: 'Invalid coordinate format. Use lat,lon' });
+    sendJSON(res, 400, { error: 'Invalid coordinate format. Use lat,lon within valid ranges.' });
     return;
   }
 
@@ -215,7 +293,7 @@ function apiRoute(res, query) {
 
     const req = lib.get(target, {
       headers: {
-        'User-Agent': 'GAMOT-Locator/1.2.0',
+        'User-Agent': 'GAMOT-Locator/1.4.0',
         Accept: 'application/json',
       },
     }, (upstream) => {
@@ -234,6 +312,7 @@ function apiRoute(res, query) {
           'Content-Type': 'application/json; charset=utf-8',
           'Cache-Control': 'no-store',
           'Access-Control-Allow-Origin': '*',
+          ...SECURITY_HEADERS,
         });
         res.end(JSON.stringify(json));
       });
@@ -252,11 +331,24 @@ function apiRoute(res, query) {
 // Request handler
 // ---------------------------------------------------------------------------
 function handle(req, res) {
-  const parsed = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const pathname = decodeURIComponent(parsed.pathname);
-
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     sendJSON(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  } catch (e) {
+    sendText(res, 400, 'Bad Request');
+    return;
+  }
+
+  let pathname;
+  try {
+    pathname = decodeURIComponent(parsed.pathname);
+  } catch (e) {
+    sendText(res, 400, 'Bad Request');
     return;
   }
 
@@ -266,11 +358,21 @@ function handle(req, res) {
   }
 
   if (pathname === '/api/providers') {
+    const ip = clientIp(req);
+    if (rateLimitHit(ip + ':providers', RATE_LIMITS.providers)) {
+      sendJSON(res, 429, { error: 'Too many requests. Please slow down.' });
+      return;
+    }
     apiProviders(res, parsed.searchParams);
     return;
   }
 
   if (pathname === '/api/route') {
+    const ip = clientIp(req);
+    if (rateLimitHit(ip + ':route', RATE_LIMITS.route)) {
+      sendJSON(res, 429, { error: 'Too many routing requests. Please slow down.' });
+      return;
+    }
     apiRoute(res, parsed.searchParams);
     return;
   }
@@ -280,7 +382,7 @@ function handle(req, res) {
     return;
   }
 
-  serveStatic(res, pathname);
+  serveStatic(res, pathname, req.method === 'HEAD');
 }
 
 const server = http.createServer(handle);

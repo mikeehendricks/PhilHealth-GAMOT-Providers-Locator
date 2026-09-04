@@ -97,7 +97,7 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = "1.3.3";
+const APP_VERSION = "1.4.0";
 
 // Classic teardrop "location pin" for the user's real-time position.
 // Fuchsia so it never gets confused with the blue/green provider pins.
@@ -211,7 +211,7 @@ function popupHtml(p) {
     ${tel}
     <div class="popup-tags">${sectorTag}${exp}</div>
     <div class="popup-actions">
-      <button class="popup-dir" onclick="startDirections(${p.id})">Directions</button>
+      <button class="popup-dir" type="button" data-id="${p.id}">Directions</button>
     </div>`;
 }
 
@@ -351,6 +351,7 @@ function focusProvider(id) {
   const p = state.providers.find((x) => x.id === id);
   state.map.setView([p.lat, p.lon], 16, { animate: true });
   setTimeout(() => m.openPopup(), 350);
+  if (isMobile()) closeSidebar();
   // highlight in list
   document.querySelectorAll('.result-item').forEach((el) => el.classList.remove('active'));
 }
@@ -497,6 +498,7 @@ function setLocating(on) {
 async function startDirections(id) {
   const p = state.providers.find((x) => x.id === id);
   if (!p) return;
+  if (isMobile()) closeSidebar();
   if (!state.userPos) {
     toast('Finding your location first…');
     locate(() => routeTo(p));
@@ -714,6 +716,22 @@ function toast(msg, kind) {
 }
 
 // ---------------------------------------------------------------------------
+// Mobile sidebar (list overlay)
+// ---------------------------------------------------------------------------
+function isMobile() {
+  return window.matchMedia('(max-width: 720px)').matches;
+}
+function openSidebar() {
+  document.body.classList.add('sidebar-open');
+}
+function closeSidebar() {
+  document.body.classList.remove('sidebar-open');
+}
+function toggleSidebar() {
+  document.body.classList.toggle('sidebar-open');
+}
+
+// ---------------------------------------------------------------------------
 // Wire up events
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
@@ -721,6 +739,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if (vn) vn.textContent = 'v' + APP_VERSION;
   console.log('[GAMOT Locator] version ' + APP_VERSION);
   init();
+
+  // Mobile sidebar toggle + backdrop + close button
+  $('btn-toggle-list').addEventListener('click', toggleSidebar);
+  $('sidebar-backdrop').addEventListener('click', closeSidebar);
+  $('btn-close-sidebar').addEventListener('click', closeSidebar);
+
+  // Delegated handler for the popup "Directions" button (no inline onclick,
+  // which keeps the Content-Security-Policy strict).
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.popup-dir');
+    if (btn) {
+      const id = parseInt(btn.getAttribute('data-id'), 10);
+      if (id) startDirections(id);
+    }
+  });
 
   $('search-input').addEventListener('input', debounce(() => {
     $('btn-clear-search').hidden = !$('search-input').value;
@@ -764,6 +797,3 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-locate').addEventListener('click', () => locate());
   $('btn-close-dir').addEventListener('click', clearDirections);
 });
-
-// expose to popup inline onclick
-window.startDirections = startDirections;

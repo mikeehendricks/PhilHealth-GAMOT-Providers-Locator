@@ -1,0 +1,26 @@
+Copyright (c) 2026 Mikee Custodio. All rights reserved.
+
+This software is proprietary and is the exclusive property of Mikee Custodio
+(the "Author").
+
+Permission is granted solely to run this software for its intended purpose.
+
+You may NOT, without the express prior written permission of the Author:
+
+  - copy, reproduce, or redistribute the source code (in whole or in part);
+  - modify, adapt, translate, or create derivative works;
+  - sublicense, sell, lease, or otherwise commercially exploit the code;
+  - incorporate the code into another product or service.
+
+To request permission to use, copy, or modify this software, contact the Author.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Third-party components bundled with or used by this software remain subject to
+their respective licenses (e.g., OpenStreetMap data under ODbL, Leaflet under
+BSD-2-Clause, Leaflet.markercluster under MIT).

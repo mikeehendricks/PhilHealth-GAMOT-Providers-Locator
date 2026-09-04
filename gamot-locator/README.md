@@ -203,4 +203,19 @@ guaranteed for every entry; treat the map pin as the provider's locality.
 
 ## License
 
-MIT. Map data © OpenStreetMap contributors. Provider data © PhilHealth.
+© 2026 Mikee Custodio. All rights reserved.
+
+This software is **proprietary**. You may use and run this application for its
+intended purpose, but you may **not** copy, reproduce, modify, distribute,
+sublicense, or create derivative works from its source code without the
+express written permission of the author, **Mikee Custodio**.
+
+To request permission, contact the author directly.
+
+Third-party components and data used by this application retain their own
+licenses:
+
+- Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL)
+- Provider data © PhilHealth
+- [Leaflet](https://leafletjs.com/) (BSD-2-Clause)
+- [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) (MIT)
