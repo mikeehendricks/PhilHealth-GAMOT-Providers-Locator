@@ -261,9 +261,15 @@ html, body {
 }
 
 /* user / selected marker styles */
+.provider-marker { background: transparent; border: none; }
 .marker-dot {
+  display: block;                 /* make the <span> honor width/height */
+  width: 14px; height: 14px;
+  margin: 1px;                    /* center the 14px dot in the 16px icon box */
+  box-sizing: border-box;
   background: var(--primary);
-  border: 2px solid #fff; border-radius: 50%;
+  border: 2px solid #fff;
+  border-radius: 50%;
   box-shadow: 0 1px 4px rgba(0,0,0,0.35);
 }
 .marker-dot.gov { background: var(--gov); }

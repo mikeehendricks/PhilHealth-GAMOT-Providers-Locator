@@ -96,7 +96,7 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.3.1";
 
 const TILE_PROVIDERS = [
   {
@@ -177,10 +177,10 @@ function initMap() {
 function providerMarker(p) {
   const isGov = p.sector_code === 'G';
   const icon = L.divIcon({
-    className: '',
-    html: `<span class="marker-dot ${isGov ? 'gov' : ''}" style="width:14px;height:14px;"></span>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    className: 'provider-marker',
+    html: `<span class="marker-dot ${isGov ? 'gov' : ''}"></span>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
   });
   const marker = L.marker([p.lat, p.lon], { icon, title: p.name });
   marker.bindPopup(popupHtml(p), { maxWidth: 280 });
