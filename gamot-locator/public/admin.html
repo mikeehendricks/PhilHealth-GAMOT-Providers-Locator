@@ -100,13 +100,14 @@
                 <tr>
                   <th>IP address</th>
                   <th>Location</th>
+                  <th>ISP</th>
                   <th>First seen</th>
                   <th>Last seen</th>
                   <th class="num">Views</th>
                 </tr>
               </thead>
               <tbody id="visitor-rows">
-                <tr><td colspan="5" class="empty">Loading…</td></tr>
+                <tr><td colspan="6" class="empty">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -142,6 +143,25 @@
             </label>
             <button type="submit" class="btn btn-primary">Add</button>
             <p class="auth-error" id="add-admin-error"></p>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3>Export visitors</h3>
+          </div>
+          <p class="muted panel-sub">Download all visitor records (CSV) within a specific date and time range. Leave either field empty for "any time".</p>
+          <form id="export-form" class="export-form" autocomplete="off">
+            <label class="field">
+              <span>From (date &amp; time)</span>
+              <input type="datetime-local" id="export-from" />
+            </label>
+            <label class="field">
+              <span>To (date &amp; time)</span>
+              <input type="datetime-local" id="export-to" />
+            </label>
+            <button type="submit" class="btn btn-primary" id="export-submit">Export CSV</button>
+            <p class="auth-error" id="export-error"></p>
           </form>
         </section>
       </main>

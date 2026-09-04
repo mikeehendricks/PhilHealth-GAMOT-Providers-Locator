@@ -56,7 +56,7 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'geolocation=(self), camera=(), microphone=(), payment=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'sha256-Y4+FWJO8ffamxjS+Nxzn0y18E8SyoO23BYikjQel8Jk=' 'sha256-HKD65T3BYNLVOmIKhHih6GnYzwEWrImDN/kRYG2+VRg='",
+    "script-src 'self' 'sha256-Y4+FWJO8ffamxjS+Nxzn0y18E8SyoO23BYikjQel8Jk=' 'sha256-HKD65T3BYNLVOmIKhHih6GnYzwEWrImDN/kRYG2+VRg=' 'sha256-v7I4VUOlijWa44hnMf7M+x+hQBUhNWXciCjZ76KpH08='",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self'",
@@ -152,7 +152,9 @@ for (const [tok, s] of Object.entries(sessions)) {
 }
 
 // ---- Geo cache ----
-let geoCache = readJSON(GEO_CACHE_FILE, {}); // ip -> {city, region, country, lat, lon}
+let geoCache = readJSON(GEO_CACHE_FILE, {}); // ip -> {city, region, country, lat, lon, isp, asn}
+// v2: added ISP/ASN capture. Reset any pre-v2 cache so IPs re-resolve with ISP.
+if (!geoCache || !geoCache._v || geoCache._v < 2) geoCache = { _v: 2 };
 
 const ACTIVE_IPS = new Map(); // ip -> lastSeen ts (in-memory only)
 
@@ -209,12 +211,12 @@ function trackVisit(req, pathname) {
   queueGeolocate(ip);
 }
 
-function queueGeolocate(ip) {
+function queueGeolocate(ip, force) {
   if (isPrivateIp(ip)) {
-    geoCache[ip] = { city: 'Local network', region: '', country: 'Local', lat: null, lon: null };
+    geoCache[ip] = { city: 'Local network', region: '', country: 'Local', lat: null, lon: null, isp: '', asn: '' };
     return;
   }
-  if (geoCache[ip] || GEO_PENDING.has(ip)) return;
+  if ((geoCache[ip] && !force) || GEO_PENDING.has(ip)) return;
   GEO_PENDING.add(ip);
   GEO_QUEUE.push(ip);
   processGeoQueue();
@@ -253,7 +255,7 @@ function httpGetJson(url, timeoutMs) {
     try { parsed = new URL(url); } catch (e) { return reject(e); }
     const lib = parsed.protocol === 'https:' ? https : http;
     const req = lib.get(url, {
-      headers: { 'User-Agent': 'GAMOT-Locator/1.6.0', Accept: 'application/json' },
+      headers: { 'User-Agent': 'GAMOT-Locator/1.7.0', Accept: 'application/json' },
       timeout: timeoutMs || 4000,
     }, (res) => {
       let body = '';
@@ -272,10 +274,13 @@ async function geolocateIp(ip) {
   try {
     const d = await httpGetJson('https://ipwho.is/' + encodeURIComponent(ip), 4000);
     if (d && d.success !== false && d.country) {
+      const conn = d.connection || {};
       return {
         city: d.city || '', region: d.region || '', country: d.country || '',
         lat: typeof d.latitude === 'number' ? d.latitude : null,
         lon: typeof d.longitude === 'number' ? d.longitude : null,
+        isp: conn.isp || conn.org || '',
+        asn: conn.asn || '',
       };
     }
   } catch (e) { /* fall through */ }
@@ -284,12 +289,14 @@ async function geolocateIp(ip) {
   try {
     const d = await httpGetJson(
       'http://ip-api.com/json/' + encodeURIComponent(ip) +
-      '?fields=status,message,country,regionName,city,lat,lon', 4000);
+      '?fields=status,message,country,regionName,city,lat,lon,isp,org,as', 4000);
     if (d && d.status === 'success') {
       return {
         city: d.city || '', region: d.regionName || '', country: d.country || '',
         lat: typeof d.lat === 'number' ? d.lat : null,
         lon: typeof d.lon === 'number' ? d.lon : null,
+        isp: d.isp || d.org || '',
+        asn: d.as || '',
       };
     }
   } catch (e) { /* fall through */ }
@@ -302,6 +309,8 @@ async function geolocateIp(ip) {
         city: d.city || '', region: d.region || '', country: d.country_name || '',
         lat: typeof d.latitude === 'number' ? d.latitude : null,
         lon: typeof d.longitude === 'number' ? d.longitude : null,
+        isp: d.org || '',
+        asn: d.asn || '',
       };
     }
   } catch (e) { /* fall through */ }
@@ -594,7 +603,7 @@ function apiRoute(res, query) {
     }
     const lib = parsed.protocol === 'https:' ? https : http;
     const req = lib.get(target, {
-      headers: { 'User-Agent': 'GAMOT-Locator/1.6.0', Accept: 'application/json' },
+      headers: { 'User-Agent': 'GAMOT-Locator/1.7.0', Accept: 'application/json' },
     }, (upstream) => {
       let body = '';
       upstream.on('data', (chunk) => (body += chunk));
@@ -797,6 +806,11 @@ function apiAdminVisitors(req, res) {
     if (!perIp.has(ip)) {
       perIp.set(ip, { ip, firstSeen: now, lastSeen: now, views: 0, geo: geoCache[ip] || null });
     }
+    // Lazily resolve (or re-resolve for ISP) any active IP that is not yet
+    // cached, so geolocation + ISP populate promptly in the table.
+    if (!isPrivateIp(ip) && (!geoCache[ip] || !geoCache[ip].isp)) {
+      queueGeolocate(ip, true);
+    }
   }
 
   const visitors = [...perIp.values()]
@@ -809,6 +823,8 @@ function apiAdminVisitors(req, res) {
         city: g ? g.city : '',
         region: g ? g.region : '',
         country: g ? g.country : '',
+        isp: g ? (g.isp || '') : '',
+        asn: g ? (g.asn || '') : '',
         lat: g ? g.lat : null,
         lon: g ? g.lon : null,
         firstSeen: r.firstSeen,
@@ -821,6 +837,71 @@ function apiAdminVisitors(req, res) {
     .sort((a, b) => b.lastSeen - a.lastSeen);
 
   sendJSON(res, 200, { online: visitors.length, windowMs: ONLINE_WINDOW, visitors, updatedAt: now });
+}
+
+// ---------------------------------------------------------------------------
+// CSV export of visitor records within a date/time range
+// ---------------------------------------------------------------------------
+function csvCell(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function fmtDateTime(ts) {
+  const d = new Date(ts);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function apiAdminExport(req, res, params) {
+  const admin = requireAuth(req, res);
+  if (!admin) return;
+
+  const fromRaw = params.get('from');
+  const toRaw = params.get('to');
+  let fromTs = fromRaw ? Date.parse(fromRaw) : NaN;
+  let toTs = toRaw ? Date.parse(toRaw) : NaN;
+  if (isNaN(fromTs)) fromTs = -Infinity;
+  if (isNaN(toTs)) toTs = Infinity;
+  if (fromTs > toTs) {
+    sendJSON(res, 400, { error: 'Invalid date range: "from" is after "to".' });
+    return;
+  }
+
+  const rows = analytics.visits.filter((v) => v.ts >= fromTs && v.ts <= toTs);
+
+  const header = ['ip', 'city', 'region', 'country', 'isp', 'asn', 'latitude', 'longitude', 'date_time', 'path', 'user_agent', 'referer'];
+  const lines = [header.map(csvCell).join(',')];
+  for (const v of rows) {
+    const g = v.geo || geoCache[v.ip] || null;
+    lines.push([
+      v.ip,
+      g ? g.city : '',
+      g ? g.region : '',
+      g ? g.country : '',
+      g ? (g.isp || '') : '',
+      g ? (g.asn || '') : '',
+      g && g.lat != null ? g.lat : '',
+      g && g.lon != null ? g.lon : '',
+      fmtDateTime(v.ts),
+      v.path || '',
+      v.ua || '',
+      v.referer || '',
+    ].map(csvCell).join(','));
+  }
+
+  const body = '\uFEFF' + lines.join('\r\n'); // BOM so Excel opens UTF-8 correctly
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  res.writeHead(200, {
+    'Content-Type': 'text/csv; charset=utf-8',
+    'Content-Disposition': `attachment; filename="gamot-visitors-${stamp}.csv"`,
+    'Content-Length': Buffer.byteLength(body),
+    'Cache-Control': 'no-store',
+    ...SECURITY_HEADERS,
+  });
+  res.end(body);
 }
 
 async function apiAdminAddAdmin(req, res) {
@@ -905,6 +986,7 @@ async function handle(req, res) {
       if (endpoint === '/admins') return apiAdminList(req, res);
       if (endpoint === '/stats') return apiAdminStats(req, res);
       if (endpoint === '/visitors') return apiAdminVisitors(req, res);
+      if (endpoint === '/export') return apiAdminExport(req, res, parsed.searchParams);
       sendJSON(res, 404, { error: 'Unknown API endpoint' });
       return;
     }

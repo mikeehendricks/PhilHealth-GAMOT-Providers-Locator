@@ -82,7 +82,8 @@ sessions, IP geolocation cache) as JSON files under `DATA_DIR` — see
 | `GET /api/admin/me` | Current administrator (auth) |
 | `GET /api/admin/admins` | List administrators (auth) |
 | `GET /api/admin/stats` | Daily / weekly / monthly view counts + 14-day series (auth) |
-| `GET /api/admin/visitors` | Realtime visitors with IP + location (auth) |
+| `GET /api/admin/visitors` | Realtime visitors with IP, location, and ISP (auth) |
+| `GET /api/admin/export?from=ISO&to=ISO` | CSV export of visitors in a date/time range (auth) |
 | `POST /api/admin/add-admin` | Add another administrator (auth) |
 
 Examples:
@@ -236,8 +237,12 @@ closed and subsequent visits show a sign-in form.
 - **Views today / this week / this month** — counts of page loads of the main
   site, plus a 14-day bar chart.
 - **Visitors online** — unique IP addresses seen in the last 5 minutes, with
-  their approximate location (city / region / country, resolved server-side
-  from a free IP-geolocation service) and their first/last-seen times.
+  their approximate location (city / region / country), **ISP / ASN**
+  (internet service provider), and their first/last-seen times — resolved
+  server-side from free IP-geolocation services.
+- **Export visitors** — download all visitor records as CSV within a specific
+  date-and-time range (IP, location, ISP/ASN, coordinates, timestamp, user
+  agent, referrer).
 - **Administrators** — list of accounts that can access the portal, plus a
   form to add more administrators.
 

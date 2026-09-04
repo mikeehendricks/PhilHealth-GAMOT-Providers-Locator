@@ -182,6 +182,12 @@
           small.textContent = v.lat.toFixed(3) + ', ' + v.lon.toFixed(3);
           tdLoc.appendChild(small);
         }
+        var tdIsp = document.createElement('td');
+        tdIsp.className = 'isp';
+        tdIsp.textContent = v.isp || '—';
+        if (v.asn) {
+          tdIsp.title = v.asn;
+        }
         var tdFirst = document.createElement('td');
         tdFirst.textContent = fmtWhen(v.firstSeen);
         var tdLast = document.createElement('td');
@@ -192,6 +198,7 @@
 
         tr.appendChild(tdIp);
         tr.appendChild(tdLoc);
+        tr.appendChild(tdIsp);
         tr.appendChild(tdFirst);
         tr.appendChild(tdLast);
         tr.appendChild(tdViews);
@@ -252,6 +259,25 @@
         err.style.color = '';
       })
       .finally(function () { btn.disabled = false; });
+  });
+
+  // ---------------- export visitors ----------------
+  document.getElementById('export-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var err = document.getElementById('export-error');
+    err.textContent = '';
+    var from = document.getElementById('export-from').value;
+    var to = document.getElementById('export-to').value;
+    if (from && to && new Date(from) > new Date(to)) {
+      err.textContent = '"From" must be before "To".';
+      return;
+    }
+    var params = new URLSearchParams();
+    if (from) params.set('from', new Date(from).toISOString());
+    if (to) params.set('to', new Date(to).toISOString());
+    // Top-level navigation: the HttpOnly session cookie is sent automatically,
+    // and the Content-Disposition header triggers a file download.
+    window.location.href = '/api/admin/export?' + params.toString();
   });
 
   // ---------------- boot ----------------
