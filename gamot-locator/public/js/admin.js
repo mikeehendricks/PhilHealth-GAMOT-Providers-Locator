@@ -61,6 +61,7 @@
     loadStats();
     loadVisitors();
     loadAdmins();
+    loadSeo();
   }
 
   // ---------------- auth flow ----------------
@@ -278,6 +279,74 @@
     // Top-level navigation: the HttpOnly session cookie is sent automatically,
     // and the Content-Disposition header triggers a file download.
     window.location.href = '/api/admin/export?' + params.toString();
+  });
+
+  // ---------------- SEO rankings ----------------
+  function rankCell(value, url) {
+    var cell = document.createElement('td');
+    if (value === null || value === undefined) {
+      cell.textContent = '—';
+      cell.className = 'muted';
+    } else if (value === 0) {
+      cell.textContent = 'Not ranked';
+      cell.className = 'muted';
+    } else {
+      cell.textContent = '#' + value;
+      cell.className = 'rank-hit';
+      if (url) cell.title = url;
+    }
+    return cell;
+  }
+
+  function loadSeo() {
+    api('/api/admin/seo').then(function (d) {
+      document.getElementById('seo-sub').textContent =
+        'Ranking position on Google and Bing for ' + (d.keywords || []).length +
+        ' target keyword' + ((d.keywords || []).length === 1 ? '' : 's') +
+        ' (domain: ' + d.domain + ').';
+
+      // show/hide the "not configured" hint
+      var hint = document.getElementById('seo-setup-hint');
+      var anyConfigured = (d.engines && (d.engines.google || d.engines.bing));
+      hint.hidden = anyConfigured;
+
+      var rows = document.getElementById('seo-rows');
+      rows.innerHTML = '';
+      (d.keywords || []).forEach(function (kw) {
+        var r = (d.results || []).find(function (x) { return x.keyword === kw; });
+        var tr = document.createElement('tr');
+        var tdKw = document.createElement('td');
+        tdKw.textContent = kw;
+        tr.appendChild(tdKw);
+        tr.appendChild(rankCell(r ? r.google : null, r && r.googleUrl));
+        tr.appendChild(rankCell(r ? r.bing : null, r && r.bingUrl));
+        var tdWhen = document.createElement('td');
+        tdWhen.className = 'muted';
+        tdWhen.textContent = (r && r.checkedAt) ? new Date(r.checkedAt).toLocaleString() : '—';
+        tr.appendChild(tdWhen);
+        rows.appendChild(tr);
+      });
+    }).catch(function (err) {
+      if (err.status === 401) showAuth('login');
+    });
+  }
+
+  document.getElementById('btn-seo-check').addEventListener('click', function () {
+    var err = document.getElementById('seo-error');
+    err.textContent = '';
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+    api('/api/admin/seo/check', 'POST').then(function (d) {
+      btn.textContent = 'Check now';
+      btn.disabled = false;
+      if (d.lastCheckedAt) err.textContent = '';
+      loadSeo();
+    }).catch(function (e2) {
+      btn.textContent = 'Check now';
+      btn.disabled = false;
+      err.textContent = e2.message || 'Rank check failed.';
+    });
   });
 
   // ---------------- boot ----------------

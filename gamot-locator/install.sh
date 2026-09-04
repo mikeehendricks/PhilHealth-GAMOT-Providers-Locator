@@ -123,12 +123,33 @@ chmod 750 "${DATA_DIR}"
 # 4. Environment configuration
 # ---------------------------------------------------------------------------
 ENV_FILE="/etc/${APP_NAME}.env"
+# Preserve optional SEO rank-tracking keys across redeploys (otherwise the
+# regenerated env file would wipe them). Read them from the current file, if any.
+if [ -f "${ENV_FILE}" ]; then
+  for _k in GOOGLE_CSE_KEY GOOGLE_CSE_ID BING_API_KEY SEO_KEYWORDS SITE_DOMAIN; do
+    _v="$(grep -E "^${_k}=" "${ENV_FILE}" 2>/dev/null | head -1 | cut -d= -f2- || true)"
+    if [ -n "${_v}" ]; then
+      export "${_k}=${_v}"
+    fi
+  done
+fi
+
 say "Writing environment configuration to ${ENV_FILE}…"
 cat > "${ENV_FILE}" <<EOF
 # PhilHealth GAMOT Locator configuration
 PORT=${APP_PORT}
 OSRM_URL=${OSRM_URL}
 DATA_DIR=${DATA_DIR}
+
+# Optional SEO rank tracking (see README "SEO rank tracking")
+# Google Programmable Search: API key + search engine ID (cx)
+GOOGLE_CSE_KEY=${GOOGLE_CSE_KEY:-}
+GOOGLE_CSE_ID=${GOOGLE_CSE_ID:-}
+# Bing Web Search API key
+BING_API_KEY=${BING_API_KEY:-}
+# Comma-separated keywords to track, and the site domain
+SEO_KEYWORDS=${SEO_KEYWORDS:-PhilHealth Yakap,PhilHealth GAMOT,PhilHealth GAMOT providers}
+SITE_DOMAIN=${SITE_DOMAIN:-yakap.dreampixelmedia.uk}
 EOF
 chmod 600 "${ENV_FILE}"
 

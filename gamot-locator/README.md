@@ -84,6 +84,8 @@ sessions, IP geolocation cache) as JSON files under `DATA_DIR` — see
 | `GET /api/admin/stats` | Daily / weekly / monthly view counts + 14-day series (auth) |
 | `GET /api/admin/visitors` | Realtime visitors with IP, location, and ISP (auth) |
 | `GET /api/admin/export?from=ISO&to=ISO` | CSV export of visitors in a date/time range (auth) |
+| `GET /api/admin/seo` | SEO rank-tracking status + results (auth) |
+| `POST /api/admin/seo/check` | Trigger a rank check (auth, max once/hour) |
 | `POST /api/admin/add-admin` | Add another administrator (auth) |
 
 Examples:
@@ -117,6 +119,11 @@ Environment variables:
 | `HOST`    | `0.0.0.0`                        | Bind address                   |
 | `OSRM_URL`| `https://router.project-osrm.org`| Routing backend (see below)    |
 | `DATA_DIR`| `./data`                         | Where admin/analytics/session state is persisted |
+| `GOOGLE_CSE_KEY` | *(empty)*                 | Google Programmable Search API key (SEO rank tracking) |
+| `GOOGLE_CSE_ID`  | *(empty)*                 | Google Programmable Search engine ID (cx) |
+| `BING_API_KEY`   | *(empty)*                 | Bing Web Search API key (SEO rank tracking) |
+| `SEO_KEYWORDS`   | `PhilHealth Yakap,PhilHealth GAMOT,PhilHealth GAMOT providers` | Comma-separated keywords to track |
+| `SITE_DOMAIN`    | `yakap.dreampixelmedia.uk`| Domain to match in search results |
 
 ---
 
@@ -243,6 +250,8 @@ closed and subsequent visits show a sign-in form.
 - **Export visitors** — download all visitor records as CSV within a specific
   date-and-time range (IP, location, ISP/ASN, coordinates, timestamp, user
   agent, referrer).
+- **SEO rankings** — your site's ranking position on Google and Bing for your
+  target keywords (requires free API keys; see "SEO rank tracking" below).
 - **Administrators** — list of accounts that can access the portal, plus a
   form to add more administrators.
 
@@ -295,6 +304,49 @@ To finish SEO setup on the production site, add the property to
 `sitemap.xml`, and request indexing of the homepage. Note that reaching the
 #1 position also depends on off-page signals (backlinks and site authority)
 that no code change can control.
+
+---
+
+## SEO rank tracking (admin panel)
+
+The admin portal's **SEO rankings** panel shows your site's position on
+Google and Bing for your target keywords, with a "Check now" button (capped at
+one check per hour to respect the free API quotas).
+
+Because Google and Bing don't expose search results without authentication,
+this feature requires free API keys:
+
+**Google (Programmable Search Engine — free, 100 queries/day):**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → create a
+   project → **APIs & Services → Enable APIs** → enable the
+   **Custom Search API**.
+2. Under **Credentials**, create an **API key**. This is `GOOGLE_CSE_KEY`.
+3. Go to [Programmable Search Engine](https://programmablesearchengine.google.com/)
+   → **Add** a new engine → set it to **"Search the entire web"** (do *not*
+   restrict to specific sites). This is the `GOOGLE_CSE_ID` (the `cx` value).
+4. (Optional) restrict the API key to the Custom Search API to keep it safe.
+
+**Bing (Web Search API — free tier):**
+
+1. Go to the [Azure portal](https://portal.azure.com/) → **Create a resource**
+   → search for **Bing Search v7** → create it (free F0 tier available).
+2. Copy one of the two keys. This is `BING_API_KEY`.
+
+Then add the keys to `/etc/gamot-locator.env` and restart:
+
+```bash
+sudo nano /etc/gamot-locator.env
+# add:  GOOGLE_CSE_KEY=… , GOOGLE_CSE_ID=… , BING_API_KEY=…
+sudo systemctl restart gamot-locator
+```
+
+> The installer preserves these keys across redeploys. Keywords and the site
+> domain can also be changed via `SEO_KEYWORDS` and `SITE_DOMAIN`. A rank of
+> `#N` means the site appeared at position N; "Not ranked" means it wasn't in
+> the top results (10 for Google, 50 for Bing); "—" means that engine isn't
+> configured. Note that a brand-new site typically shows "Not ranked" until
+> Google indexes it and it builds authority.
 
 ---
 

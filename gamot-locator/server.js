@@ -45,6 +45,25 @@ const ADMIN_FILE = path.join(RUNTIME_DIR, 'admins.json');
 const ANALYTICS_FILE = path.join(RUNTIME_DIR, 'analytics.json');
 const SESSIONS_FILE = path.join(RUNTIME_DIR, 'sessions.json');
 const GEO_CACHE_FILE = path.join(RUNTIME_DIR, 'geo-cache.json');
+const SEO_RANKINGS_FILE = path.join(RUNTIME_DIR, 'seo-rankings.json');
+
+// ---------------------------------------------------------------------------
+// SEO rank-tracking configuration (all optional)
+// ---------------------------------------------------------------------------
+// Google Programmable Search: GOOGLE_CSE_KEY (API key) + GOOGLE_CSE_ID (cx).
+// Free tier: 100 queries/day. The search engine must be set to "Search the
+// entire web" so results reflect real Google rankings.
+// Bing Web Search: BING_API_KEY. Free tier: ~1,000 transactions/month.
+const SITE_DOMAIN = (process.env.SITE_DOMAIN || 'yakap.dreampixelmedia.uk').toLowerCase();
+const SEO_KEYWORDS = (process.env.SEO_KEYWORDS || 'PhilHealth Yakap,PhilHealth GAMOT,PhilHealth GAMOT providers')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+const GOOGLE_CSE_KEY = process.env.GOOGLE_CSE_KEY || '';
+const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID || '';
+const BING_API_KEY = process.env.BING_API_KEY || '';
+const SEO_CHECK_COOLDOWN_MS = 60 * 60 * 1000; // manual "check now" at most once/hour
+// Overridable endpoints (mainly for testing; defaults are the live APIs).
+const GOOGLE_CSE_URL = (process.env.GOOGLE_CSE_URL || 'https://www.googleapis.com/customsearch/v1').replace(/\/+$/, '');
+const BING_SEARCH_URL = (process.env.BING_SEARCH_URL || 'https://api.bing.microsoft.com/v7.0/search').replace(/\/+$/, '');
 
 // ---------------------------------------------------------------------------
 // Security headers applied to every response
@@ -156,6 +175,10 @@ let geoCache = readJSON(GEO_CACHE_FILE, {}); // ip -> {city, region, country, la
 // v2: added ISP/ASN capture. Reset any pre-v2 cache so IPs re-resolve with ISP.
 if (!geoCache || !geoCache._v || geoCache._v < 2) geoCache = { _v: 2 };
 
+// SEO rankings: [{ keyword, google, googleUrl, bing, bingUrl, checkedAt }]
+let seoRankings = readJSON(SEO_RANKINGS_FILE, { results: [], lastCheckedAt: null });
+if (!seoRankings || !Array.isArray(seoRankings.results)) seoRankings = { results: [], lastCheckedAt: null };
+
 const ACTIVE_IPS = new Map(); // ip -> lastSeen ts (in-memory only)
 
 const VISIT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // keep 90 days
@@ -168,6 +191,7 @@ function flushAll() {
   writeJSON(ANALYTICS_FILE, analytics);
   writeJSON(SESSIONS_FILE, sessions);
   writeJSON(GEO_CACHE_FILE, geoCache);
+  writeJSON(SEO_RANKINGS_FILE, seoRankings);
 }
 
 setInterval(flushAll, 30 * 1000).unref();
@@ -249,17 +273,17 @@ async function processGeoQueue() {
 // ---------------------------------------------------------------------------
 // IP geolocation (multiple free, no-key providers, server-side)
 // ---------------------------------------------------------------------------
-function httpGetJson(url, timeoutMs) {
+function httpGetJson(url, timeoutMs, extraHeaders) {
   return new Promise((resolve, reject) => {
     let parsed;
     try { parsed = new URL(url); } catch (e) { return reject(e); }
     const lib = parsed.protocol === 'https:' ? https : http;
     const req = lib.get(url, {
-      headers: { 'User-Agent': 'GAMOT-Locator/1.7.0', Accept: 'application/json' },
+      headers: { 'User-Agent': 'GAMOT-Locator/1.8.0', Accept: 'application/json', ...(extraHeaders || {}) },
       timeout: timeoutMs || 4000,
     }, (res) => {
       let body = '';
-      res.on('data', (c) => { body += c; if (body.length > 65536) req.destroy(); });
+      res.on('data', (c) => { body += c; if (body.length > 200000) req.destroy(); });
       res.on('end', () => {
         try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
       });
@@ -603,7 +627,7 @@ function apiRoute(res, query) {
     }
     const lib = parsed.protocol === 'https:' ? https : http;
     const req = lib.get(target, {
-      headers: { 'User-Agent': 'GAMOT-Locator/1.7.0', Accept: 'application/json' },
+      headers: { 'User-Agent': 'GAMOT-Locator/1.8.0', Accept: 'application/json' },
     }, (upstream) => {
       let body = '';
       upstream.on('data', (chunk) => (body += chunk));
@@ -904,6 +928,124 @@ function apiAdminExport(req, res, params) {
   res.end(body);
 }
 
+// ---------------------------------------------------------------------------
+// SEO rank tracking (Google Programmable Search + Bing Web Search)
+// ---------------------------------------------------------------------------
+function domainIn(url, domain) {
+  try {
+    return String(url || '').toLowerCase().includes(domain);
+  } catch (e) {
+    return false;
+  }
+}
+
+// Returns null if the engine is not configured, or { position } where
+// position is 1..N (rank) or 0 (checked but not found in the top results).
+async function checkGoogleRanking(keyword) {
+  if (!GOOGLE_CSE_KEY || !GOOGLE_CSE_ID) return null;
+  const url = GOOGLE_CSE_URL +
+    '?key=' + encodeURIComponent(GOOGLE_CSE_KEY) +
+    '&cx=' + encodeURIComponent(GOOGLE_CSE_ID) +
+    '&q=' + encodeURIComponent(keyword) +
+    '&num=10';
+  const d = await httpGetJson(url, 8000);
+  if (!d || !Array.isArray(d.items)) return { position: 0, url: '' };
+  for (let i = 0; i < d.items.length; i++) {
+    if (domainIn(d.items[i].link, SITE_DOMAIN)) {
+      return { position: i + 1, url: d.items[i].link || '' };
+    }
+  }
+  return { position: 0, url: '' };
+}
+
+async function checkBingRanking(keyword) {
+  if (!BING_API_KEY) return null;
+  const url = BING_SEARCH_URL + '?q=' +
+    encodeURIComponent(keyword) + '&count=50&mkt=en-PH';
+  const d = await httpGetJson(url, 8000, { 'Ocp-Apim-Subscription-Key': BING_API_KEY });
+  const pages = d && d.webPages && d.webPages.value;
+  if (!Array.isArray(pages)) return { position: 0, url: '' };
+  for (let i = 0; i < pages.length; i++) {
+    if (domainIn(pages[i].url, SITE_DOMAIN)) {
+      return { position: i + 1, url: pages[i].url || '' };
+    }
+  }
+  return { position: 0, url: '' };
+}
+
+let seoCheckRunning = false;
+
+async function runSeoCheck() {
+  if (seoCheckRunning) return;
+  seoCheckRunning = true;
+  try {
+    const checkedAt = Date.now();
+    for (const keyword of SEO_KEYWORDS) {
+      let google = null, googleUrl = '', bing = null, bingUrl = '';
+      try {
+        const g = await checkGoogleRanking(keyword);
+        if (g) { google = g.position; googleUrl = g.url; }
+      } catch (e) { /* leave null */ }
+      try {
+        const b = await checkBingRanking(keyword);
+        if (b) { bing = b.position; bingUrl = b.url; }
+      } catch (e) { /* leave null */ }
+      const existing = seoRankings.results.find((r) => r.keyword === keyword);
+      if (existing) {
+        existing.google = google;
+        existing.googleUrl = googleUrl;
+        existing.bing = bing;
+        existing.bingUrl = bingUrl;
+        existing.checkedAt = checkedAt;
+      } else {
+        seoRankings.results.push({ keyword, google, googleUrl, bing, bingUrl, checkedAt });
+      }
+    }
+    seoRankings.lastCheckedAt = checkedAt;
+    flushAll();
+  } finally {
+    seoCheckRunning = false;
+  }
+}
+
+function apiAdminSeo(req, res) {
+  const admin = requireAuth(req, res);
+  if (!admin) return;
+  sendJSON(res, 200, {
+    domain: SITE_DOMAIN,
+    keywords: SEO_KEYWORDS,
+    engines: {
+      google: !!(GOOGLE_CSE_KEY && GOOGLE_CSE_ID),
+      bing: !!BING_API_KEY,
+    },
+    results: seoRankings.results,
+    lastCheckedAt: seoRankings.lastCheckedAt || null,
+    checking: seoCheckRunning,
+  });
+}
+
+async function apiAdminSeoCheck(req, res) {
+  const admin = requireAuth(req, res);
+  if (!admin) return;
+  if (!hasCsrfHeader(req)) { sendJSON(res, 403, { error: 'Forbidden' }); return; }
+
+  const configured = (GOOGLE_CSE_KEY && GOOGLE_CSE_ID) || BING_API_KEY;
+  if (!configured) {
+    sendJSON(res, 400, {
+      error: 'Rank tracking is not configured. Set GOOGLE_CSE_KEY + GOOGLE_CSE_ID (Google) or BING_API_KEY (Bing) in the server environment, then restart.',
+    });
+    return;
+  }
+  const now = Date.now();
+  if (seoRankings.lastCheckedAt && now - seoRankings.lastCheckedAt < SEO_CHECK_COOLDOWN_MS) {
+    sendJSON(res, 429, { error: 'Please wait at least an hour between rank checks.' });
+    return;
+  }
+
+  await runSeoCheck();
+  sendJSON(res, 200, { ok: true, results: seoRankings.results, lastCheckedAt: seoRankings.lastCheckedAt });
+}
+
 async function apiAdminAddAdmin(req, res) {
   const admin = requireAuth(req, res);
   if (!admin) return;
@@ -977,6 +1119,7 @@ async function handle(req, res) {
       if (endpoint === '/login') return apiAdminLogin(req, res);
       if (endpoint === '/logout') return apiAdminLogout(req, res);
       if (endpoint === '/add-admin') return apiAdminAddAdmin(req, res);
+      if (endpoint === '/seo/check') return apiAdminSeoCheck(req, res);
       sendJSON(res, 404, { error: 'Unknown API endpoint' });
       return;
     }
@@ -987,6 +1130,7 @@ async function handle(req, res) {
       if (endpoint === '/stats') return apiAdminStats(req, res);
       if (endpoint === '/visitors') return apiAdminVisitors(req, res);
       if (endpoint === '/export') return apiAdminExport(req, res, parsed.searchParams);
+      if (endpoint === '/seo') return apiAdminSeo(req, res);
       sendJSON(res, 404, { error: 'Unknown API endpoint' });
       return;
     }

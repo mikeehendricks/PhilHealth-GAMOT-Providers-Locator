@@ -279,6 +279,31 @@ html, body {
 .export-form .auth-error { grid-column: 1 / -1; margin: 0; }
 .export-form input[type="datetime-local"] { color-scheme: dark; }
 
+/* SEO rankings */
+.seo-table .rank-hit { color: var(--green); font-weight: 600; }
+.seo-table td.muted, .seo-table th { color: var(--muted); }
+.seo-hint {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.seo-hint strong { color: var(--text); }
+.seo-hint code {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+  color: var(--text);
+  margin: 0 2px;
+}
+
 @media (max-width: 720px) {
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .add-admin { grid-template-columns: 1fr; }

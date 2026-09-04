@@ -164,6 +164,36 @@
             <p class="auth-error" id="export-error"></p>
           </form>
         </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3>SEO rankings</h3>
+            <button class="btn btn-ghost" id="btn-seo-check" type="button">Check now</button>
+          </div>
+          <p class="muted panel-sub" id="seo-sub">Your ranking position on Google and Bing for your target keywords.</p>
+          <div class="table-wrap">
+            <table class="visitor-table seo-table">
+              <thead>
+                <tr>
+                  <th>Keyword</th>
+                  <th>Google</th>
+                  <th>Bing</th>
+                  <th>Last checked</th>
+                </tr>
+              </thead>
+              <tbody id="seo-rows">
+                <tr><td colspan="4" class="empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="auth-error" id="seo-error"></p>
+          <div id="seo-setup-hint" class="seo-hint" hidden>
+            <strong>Rank tracking isn't configured yet.</strong> Set these environment
+            variables on the server and restart the service: <code>GOOGLE_CSE_KEY</code> +
+            <code>GOOGLE_CSE_ID</code> (Google) and/or <code>BING_API_KEY</code> (Bing).
+            See the README "SEO rank tracking" section for the free setup steps.
+          </div>
+        </section>
       </main>
     </div>
 
