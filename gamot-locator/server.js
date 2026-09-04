@@ -166,7 +166,7 @@ function apiProviders(res, query) {
 }
 
 // ---------------------------------------------------------------------------
-// Routing proxy (OSRM)
+// Routing proxy (OSRM) — tries a list of endpoints in order, returns JSON.
 // ---------------------------------------------------------------------------
 function apiRoute(res, query) {
   const from = query.get('from'); // "lat,lon"
@@ -192,43 +192,60 @@ function apiRoute(res, query) {
 
   // OSRM expects lon,lat ordering
   const coords = `${f.lon},${f.lat};${t.lon},${t.lat}`;
-  const target = `${OSRM_URL}/route/v1/${profile}/${coords}` +
+  const path = `/route/v1/${profile}/${coords}` +
     `?overview=full&geometries=geojson&steps=true&alternatives=false`;
 
-  const parsed = new URL(target);
-  const lib = parsed.protocol === 'https:' ? https : http;
+  // Endpoints to try, in order (primary + fallback mirror).
+  const endpoints = [OSRM_URL, 'https://router.project-osrm.org'];
 
-  const req = lib.get(target, {
-    headers: {
-      'User-Agent': 'GAMOT-Locator/1.0',
-      Accept: 'application/json',
-    },
-  }, (upstream) => {
-    let body = '';
-    upstream.on('data', (chunk) => (body += chunk));
-    upstream.on('end', () => {
-      let json;
-      try {
-        json = JSON.parse(body);
-      } catch (e) {
-        sendJSON(res, 502, { error: 'Upstream routing service returned invalid data', detail: body.slice(0, 300) });
-        return;
-      }
-      res.writeHead(upstream.statusCode || 200, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'Access-Control-Allow-Origin': '*',
+  const tryEndpoint = (idx) => {
+    if (idx >= endpoints.length) {
+      sendJSON(res, 502, { error: 'All routing services failed' });
+      return;
+    }
+    const target = endpoints[idx].replace(/\/+$/, '') + path;
+    let parsed;
+    try {
+      parsed = new URL(target);
+    } catch (e) {
+      sendJSON(res, 500, { error: 'Invalid routing endpoint configuration' });
+      return;
+    }
+    const lib = parsed.protocol === 'https:' ? https : http;
+
+    const req = lib.get(target, {
+      headers: {
+        'User-Agent': 'GAMOT-Locator/1.2.0',
+        Accept: 'application/json',
+      },
+    }, (upstream) => {
+      let body = '';
+      upstream.on('data', (chunk) => (body += chunk));
+      upstream.on('end', () => {
+        let json;
+        try {
+          json = JSON.parse(body);
+        } catch (e) {
+          // Non-JSON (e.g. an HTML block page) — try the next endpoint.
+          tryEndpoint(idx + 1);
+          return;
+        }
+        res.writeHead(upstream.statusCode || 200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(JSON.stringify(json));
       });
-      res.end(JSON.stringify(json));
     });
-  });
-  req.on('error', (err) => {
-    sendJSON(res, 502, { error: 'Failed to reach routing service', detail: err.message });
-  });
-  req.setTimeout(30000, () => {
-    req.destroy();
-    sendJSON(res, 504, { error: 'Routing service timed out' });
-  });
+    req.on('error', () => tryEndpoint(idx + 1));
+    req.setTimeout(15000, () => {
+      req.destroy();
+      tryEndpoint(idx + 1);
+    });
+  };
+
+  tryEndpoint(0);
 }
 
 // ---------------------------------------------------------------------------

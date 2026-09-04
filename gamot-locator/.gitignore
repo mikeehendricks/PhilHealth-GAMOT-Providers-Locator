@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Data source (large PDF — obtain from PhilHealth and place as uploads/GAMOT.pdf)
+GAMOT.pdf
+uploads/
+*.pdf
+
+# Scratch / test output
+test*.js
+screenshot*.png
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

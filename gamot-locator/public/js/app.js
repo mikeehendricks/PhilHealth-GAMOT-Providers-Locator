@@ -96,7 +96,7 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = '1.2.0';
+const APP_VERSION = "1.3.0";
 
 const TILE_PROVIDERS = [
   {
@@ -474,18 +474,69 @@ async function routeTo(p) {
   $('directions-panel').hidden = false;
   $('dir-steps').innerHTML = '<li class="dir-step"><span class="step-body step-text">Fetching route…</span></li>';
 
+  let data = null;
+  let usedFallback = false;
+
+  // 1) Try our server proxy first (works with a self-hosted OSRM too).
+  data = await fetchRouteViaServer(p);
+  if (data && data.code === 'Ok' && data.routes && data.routes.length) {
+    drawRoute(data.routes[0], p);
+    return;
+  }
+
+  // 2) Server proxy failed (could be a CDN/WAF blocking the /api/route
+  //    path, or a proxy timeout returning an HTML error page). Fall back to
+  //    calling the public OSRM API directly from the browser (it allows CORS).
+  usedFallback = true;
+  $('dir-summary').textContent = 'Retrying via direct routing…';
+  data = await fetchRouteDirect(p);
+
+  if (data && data.code === 'Ok' && data.routes && data.routes.length) {
+    drawRoute(data.routes[0], p);
+    return;
+  }
+
+  // 3) Both failed — show a clear, actionable message.
+  $('dir-summary').textContent = '';
+  $('dir-steps').innerHTML =
+    '<li class="dir-step"><span class="step-body step-text">' +
+    'Could not calculate a route. The routing service may be temporarily ' +
+    'unavailable. Please try again in a moment.</span></li>';
+}
+
+// Fetch the route through our own server (preferred; supports self-hosted OSRM).
+async function fetchRouteViaServer(p) {
   try {
     const url = `/api/route?from=${state.userPos.lat},${state.userPos.lon}&to=${p.lat},${p.lon}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    const ct = res.headers.get('content-type') || '';
+    // Guard against CDN/WAF returning an HTML error page instead of JSON.
+    if (!res.ok || !ct.includes('json')) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+// Fetch the route directly from the public OSRM API (CORS-enabled). This
+// bypasses our server (and any CDN/WAF in front of it) entirely.
+async function fetchRouteDirect(p) {
+  try {
+    const from = `${state.userPos.lon},${state.userPos.lat}`;
+    const to = `${p.lon},${p.lat}`;
+    const url =
+      'https://router.project-osrm.org/route/v1/driving/' +
+      `${from};${to}?overview=full&geometries=geojson&steps=true&alternatives=false`;
     const res = await fetch(url);
-    const data = await res.json();
-    if (data.code !== 'Ok' || !data.routes || !data.routes.length) {
-      throw new Error(data.message || 'No route found');
-    }
-    drawRoute(data.routes[0], p);
-  } catch (err) {
-    $('dir-summary').textContent = '';
-    $('dir-steps').innerHTML =
-      `<li class="dir-step"><span class="step-body step-text">Could not get directions: ${escapeHtml(err.message)}</span></li>`;
+    if (!res.ok) return null;
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('json')) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
   }
 }
 
