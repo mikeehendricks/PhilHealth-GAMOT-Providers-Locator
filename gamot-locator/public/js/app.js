@@ -97,7 +97,7 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.4.1";
 
 // Classic teardrop "location pin" for the user's real-time position.
 // Fuchsia so it never gets confused with the blue/green provider pins.
@@ -723,13 +723,26 @@ function isMobile() {
 }
 function openSidebar() {
   document.body.classList.add('sidebar-open');
+  document.body.classList.remove('sidebar-hidden');
 }
 function closeSidebar() {
   document.body.classList.remove('sidebar-open');
 }
 function toggleSidebar() {
-  document.body.classList.toggle('sidebar-open');
+  if (isMobile()) {
+    // Mobile: toggle the slide-up bottom sheet
+    document.body.classList.toggle('sidebar-open');
+  } else {
+    // Desktop: collapse/expand the sidebar (map expands to fill the space)
+    document.body.classList.toggle('sidebar-hidden');
+  }
 }
+
+// Keep state consistent when the window crosses the mobile/desktop breakpoint
+// (e.g. rotating a phone or resizing a laptop window).
+window.addEventListener('resize', () => {
+  if (!isMobile()) document.body.classList.remove('sidebar-open');
+});
 
 // ---------------------------------------------------------------------------
 // Wire up events

@@ -85,6 +85,7 @@ html, body {
   display: flex;
   flex: 1;
   min-height: 0;
+  overflow: hidden;   /* clip the sidebar as it slides out on desktop */
 }
 
 .sidebar {
@@ -96,6 +97,17 @@ html, body {
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow: hidden;
+}
+
+/* Desktop: the "List" toggle collapses the sidebar so the map expands */
+@media (min-width: 721px) {
+  .sidebar {
+    transition: margin-left 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body.sidebar-hidden .sidebar {
+    margin-left: -340px;   /* slide out of view; negative margin frees the space */
+    pointer-events: none;
+  }
 }
 
 .sidebar-mobile-head { display: none; }
