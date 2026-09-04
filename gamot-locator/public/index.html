@@ -1,15 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>PhilHealth GAMOT Package Providers — Locator</title>
-  <meta name="description" content="Find the nearest accredited PhilHealth GAMOT Package providers (pharmacies, hospitals, rural health units) across the Philippines, with turn-by-turn navigation." />
+  <title>PhilHealth Yakap &amp; GAMOT Providers Locator — Find Free Medicines Near You</title>
+  <meta name="description" content="Find the nearest PhilHealth Yakap &amp; GAMOT (Guaranteed and Accessible Medications for Outpatient Treatment) provider — accredited pharmacies, hospitals, and rural health units across the Philippines. GPS search with turn-by-turn directions." />
+  <meta name="keywords" content="PhilHealth Yakap, PhilHealth GAMOT, GAMOT providers, accredited pharmacy, free medicines Philippines, Yaman ng Kalusugan, Guaranteed and Accessible Medications for Outpatient Treatment, GAMOT locator" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <meta name="author" content="Mikee Custodio" />
+  <meta name="theme-color" content="#0d1c40" />
+  <link rel="canonical" href="https://yakap.dreampixelmedia.uk/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Yakap GAMOT Locator" />
+  <meta property="og:title" content="PhilHealth Yakap &amp; GAMOT Providers Locator" />
+  <meta property="og:description" content="Find the nearest PhilHealth Yakap &amp; GAMOT accredited provider — pharmacies, hospitals, and rural health units across the Philippines." />
+  <meta property="og:url" content="https://yakap.dreampixelmedia.uk/" />
+  <meta property="og:image" content="https://yakap.dreampixelmedia.uk/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_PH" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PhilHealth Yakap &amp; GAMOT Providers Locator" />
+  <meta name="twitter:description" content="Find the nearest PhilHealth Yakap &amp; GAMOT accredited provider — pharmacies, hospitals, and rural health units across the Philippines." />
+  <meta name="twitter:image" content="https://yakap.dreampixelmedia.uk/og-image.png" />
+
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d6efd'/%3E%3Cpath d='M9 16h14M16 9v14' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.5.0" />
-  <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=1.5.0" />
-  <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.Default.css?v=1.5.0" />
-  <link rel="stylesheet" href="css/style.css?v=1.5.0" />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.6.0" />
+  <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=1.6.0" />
+  <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.Default.css?v=1.6.0" />
+  <link rel="stylesheet" href="css/style.css?v=1.6.0" />
+
+  <!-- Structured data: WebSite + SearchAction -->
+  <script type="application/ld+json" id="seo-website">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Yakap GAMOT Locator",
+    "alternateName": "PhilHealth Yakap & GAMOT Providers Locator",
+    "url": "https://yakap.dreampixelmedia.uk/",
+    "description": "Locator for accredited PhilHealth Yakap & GAMOT (Guaranteed and Accessible Medications for Outpatient Treatment) providers in the Philippines.",
+    "inLanguage": "en-PH",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://yakap.dreampixelmedia.uk/?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+
+  <!-- Structured data: FAQ -->
+  <script type="application/ld+json" id="seo-faq">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is the PhilHealth GAMOT program?",
+        "acceptedAnswer": { "@type": "Answer", "text": "GAMOT stands for Guaranteed and Accessible Medications for Outpatient Treatment. It is PhilHealth's outpatient drug benefit that provides eligible members with free access to 75 essential medicines, with an annual benefit limit of up to ₱20,000 per beneficiary." }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the PhilHealth Yakap program?",
+        "acceptedAnswer": { "@type": "Answer", "text": "YAKAP (Yaman ng Kalusugan) is PhilHealth's comprehensive primary care program. The GAMOT medicines benefit is a component of YAKAP, delivered through accredited pharmacies, hospitals, and rural health units." }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I find the nearest GAMOT provider?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Use the Yakap GAMOT Locator map: allow GPS access and tap Locate Me to see the providers nearest you, or search by city, municipality, or province, then tap any provider for turn-by-turn directions." }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I claim free medicines under GAMOT?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Register in the PhilHealth YAKAP program via eGovPH, consult a YAKAP-accredited doctor, receive a GAMOT prescription with a Unique Prescription Security Code (UPSC), then present it with a valid ID at any accredited GAMOT provider." }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <div id="app">
@@ -139,8 +210,74 @@
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
   </div>
 
-  <script src="vendor/leaflet/leaflet.js?v=1.5.0"></script>
-  <script src="vendor/markercluster/leaflet.markercluster.js?v=1.5.0"></script>
-  <script src="js/app.js?v=1.5.0"></script>
+  <!-- ============ SEO content (indexable, keyword-rich) ============ -->
+  <section class="seo-section" aria-label="About PhilHealth Yakap and GAMOT">
+    <div class="seo-inner">
+      <h2>What is the PhilHealth Yakap &amp; GAMOT Program?</h2>
+      <p>
+        <strong>Yakap GAMOT Locator</strong> helps you find the nearest
+        <strong>PhilHealth Yakap</strong> and <strong>GAMOT</strong> (Guaranteed
+        and Accessible Medications for Outpatient Treatment) accredited
+        providers anywhere in the Philippines. Allow GPS access and tap
+        <em>Locate Me</em> to see the providers nearest you, or search by
+        provider name, city, municipality, or province to locate accredited
+        pharmacies, hospitals, and rural health units that dispense free
+        medicines under PhilHealth.
+      </p>
+
+      <h2>About the GAMOT Benefit Package</h2>
+      <p>
+        <strong>GAMOT</strong> — Guaranteed and Accessible Medications for
+        Outpatient Treatment — is PhilHealth's outpatient drug benefit. It
+        provides eligible members with free access to
+        <strong>75 essential medicines</strong>, with an annual benefit limit of
+        up to <strong>₱20,000 per beneficiary</strong>. It is a component of the
+        PhilHealth <strong>YAKAP</strong> (Yaman ng Kalusugan) program.
+      </p>
+
+      <h3>Who can avail of the GAMOT benefit?</h3>
+      <ul>
+        <li>PhilHealth members and their dependents</li>
+        <li>Patients with a GAMOT prescription from a YAKAP-accredited doctor</li>
+        <li>Prescriptions bearing a Unique Prescription Security Code (UPSC)</li>
+      </ul>
+
+      <h3>How to claim free medicines</h3>
+      <ol>
+        <li>Register in the PhilHealth YAKAP program via eGovPH.</li>
+        <li>Consult a YAKAP-accredited doctor.</li>
+        <li>Receive a GAMOT prescription with a Unique Prescription Security Code (UPSC).</li>
+        <li>Present the prescription and a valid ID at an accredited GAMOT provider.</li>
+      </ol>
+
+      <h2>Frequently Asked Questions</h2>
+      <div class="faq">
+        <div class="faq-item">
+          <h3>What is PhilHealth GAMOT?</h3>
+          <p>GAMOT (Guaranteed and Accessible Medications for Outpatient Treatment) is PhilHealth's outpatient drug benefit that provides free access to 75 essential medicines for eligible members.</p>
+        </div>
+        <div class="faq-item">
+          <h3>What is PhilHealth Yakap?</h3>
+          <p>YAKAP (Yaman ng Kalusugan) is PhilHealth's comprehensive primary care program. The GAMOT medicines benefit is delivered through YAKAP-accredited providers.</p>
+        </div>
+        <div class="faq-item">
+          <h3>How do I find the nearest GAMOT provider?</h3>
+          <p>Use the map above: allow GPS and tap Locate Me, or search by city or province, then tap any provider for turn-by-turn directions.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Are the medicines really free?</h3>
+          <p>Yes. Eligible PhilHealth members can get covered medicines at no cost from accredited GAMOT providers, up to the ₱20,000 annual benefit limit per beneficiary.</p>
+        </div>
+        <div class="faq-item">
+          <h3>What is a UPSC?</h3>
+          <p>A Unique Prescription Security Code (UPSC) is a code on a GAMOT prescription issued by a YAKAP-accredited doctor, which an accredited provider uses to validate and dispense your free medicines.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="vendor/leaflet/leaflet.js?v=1.6.0"></script>
+  <script src="vendor/markercluster/leaflet.markercluster.js?v=1.6.0"></script>
+  <script src="js/app.js?v=1.6.0"></script>
 </body>
 </html>

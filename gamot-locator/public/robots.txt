@@ -1,0 +1,11 @@
+# Yakap GAMOT Locator — robots.txt
+# https://yakap.dreampixelmedia.uk/
+
+User-agent: *
+Allow: /
+
+# Keep the admin portal out of search results
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://yakap.dreampixelmedia.uk/sitemap.xml

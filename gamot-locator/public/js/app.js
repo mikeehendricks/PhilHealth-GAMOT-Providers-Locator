@@ -89,6 +89,17 @@ async function init() {
   addAllMarkers();
   updateResultsCount();
   $('loading').hidden = true;
+
+  // Support deep links and Google's SearchAction sitelink: prefill the search
+  // box from a ?q= query parameter (e.g. /?q=cebu).
+  const params = new URLSearchParams(window.location.search);
+  const q = params.get('q');
+  if (q) {
+    $('search-input').value = q;
+    $('btn-clear-search').hidden = false;
+    renderResults();
+  }
+
   // Re-measure the map once everything is laid out (fonts, sidebar, etc.) so
   // no grey strip is left un-rendered on first paint.
   setTimeout(refreshMapSize, 100);
@@ -101,7 +112,7 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.0";
 
 // Classic teardrop "location pin" for the user's real-time position.
 // Fuchsia so it never gets confused with the blue/green provider pins.

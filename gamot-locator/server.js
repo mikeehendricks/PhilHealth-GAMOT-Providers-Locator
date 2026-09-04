@@ -56,7 +56,7 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'geolocation=(self), camera=(), microphone=(), payment=()',
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' 'sha256-Y4+FWJO8ffamxjS+Nxzn0y18E8SyoO23BYikjQel8Jk=' 'sha256-HKD65T3BYNLVOmIKhHih6GnYzwEWrImDN/kRYG2+VRg='",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self'",
@@ -253,7 +253,7 @@ function httpGetJson(url, timeoutMs) {
     try { parsed = new URL(url); } catch (e) { return reject(e); }
     const lib = parsed.protocol === 'https:' ? https : http;
     const req = lib.get(url, {
-      headers: { 'User-Agent': 'GAMOT-Locator/1.5.0', Accept: 'application/json' },
+      headers: { 'User-Agent': 'GAMOT-Locator/1.6.0', Accept: 'application/json' },
       timeout: timeoutMs || 4000,
     }, (res) => {
       let body = '';
@@ -382,6 +382,7 @@ const MIME = {
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
   '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
   '.map': 'application/json; charset=utf-8',
 };
 
@@ -593,7 +594,7 @@ function apiRoute(res, query) {
     }
     const lib = parsed.protocol === 'https:' ? https : http;
     const req = lib.get(target, {
-      headers: { 'User-Agent': 'GAMOT-Locator/1.5.0', Accept: 'application/json' },
+      headers: { 'User-Agent': 'GAMOT-Locator/1.6.0', Accept: 'application/json' },
     }, (upstream) => {
       let body = '';
       upstream.on('data', (chunk) => (body += chunk));

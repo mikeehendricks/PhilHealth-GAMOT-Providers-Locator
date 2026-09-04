@@ -265,6 +265,34 @@ declared writable in the systemd unit (`ReadWritePaths`) despite
 
 ---
 
+## Search engine optimization (SEO)
+
+The site is optimized to rank for **"PhilHealth Yakap"**, **"PhilHealth GAMOT"**,
+and related "free medicines Philippines" searches:
+
+- **Title & meta description** targeting the primary keywords.
+- **Canonical URL** (`https://yakap.dreampixelmedia.uk/`) and Open Graph /
+  Twitter cards (with a generated `og-image.png`).
+- **Structured data (JSON-LD)** — a `WebSite` schema with a `SearchAction`
+  (Google can show a sitelink search box) and an `FAQPage` schema (eligible
+  for rich results / "People also ask"). The inline JSON-LD is whitelisted in
+  the CSP via SHA-256 hashes, so `script-src 'self'` stays strict.
+- **Indexable content** — a keyword-rich "About / FAQ" section below the map
+  so the single-page app has substantial crawlable text (the map results are
+  otherwise JS-rendered).
+- **`robots.txt`** (allows crawling, excludes `/admin` and `/api/`) and a
+  **`sitemap.xml`**.
+- **Deep-link search** — `/?q=cebu` prefills the search box (backs the
+  `SearchAction` target).
+
+To finish SEO setup on the production site, add the property to
+[Google Search Console](https://search.google.com/search-console), submit
+`sitemap.xml`, and request indexing of the homepage. Note that reaching the
+#1 position also depends on off-page signals (backlinks and site authority)
+that no code change can control.
+
+---
+
 ## License
 
 © 2026 Mikee Custodio. All rights reserved.
