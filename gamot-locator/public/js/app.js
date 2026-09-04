@@ -90,6 +90,52 @@ async function init() {
   $('loading').hidden = true;
 }
 
+// Tile providers — all free, no API key required. OSM is the primary
+// (guaranteed keyless); CARTO is the automatic fallback if OSM tiles fail.
+const TILE_PROVIDERS = [
+  {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  },
+  {
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+      '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20,
+  },
+];
+
+function initBaseLayer() {
+  let providerIndex = 0;
+  let failStreak = 0;
+  let layer = null;
+
+  const loadProvider = (i) => {
+    const p = TILE_PROVIDERS[i];
+    const opts = { attribution: p.attribution, maxZoom: p.maxZoom };
+    if (p.subdomains) opts.subdomains = p.subdomains;
+    layer = L.tileLayer(p.url, opts);
+    // If the active provider repeatedly fails (e.g. blocked CDN), switch
+    // to the next one so the map never stays blank.
+    layer.on('tileerror', () => {
+      failStreak++;
+      if (failStreak >= 4 && providerIndex < TILE_PROVIDERS.length - 1) {
+        state.map.removeLayer(layer);
+        failStreak = 0;
+        providerIndex++;
+        loadProvider(providerIndex);
+      }
+    });
+    layer.addTo(state.map);
+  };
+
+  loadProvider(0);
+}
+
 function initMap() {
   state.map = L.map('map', {
     center: PH_CENTER,
@@ -100,13 +146,7 @@ function initMap() {
   });
   state.map.setMaxBounds(PH_BOUNDS.pad(0.4));
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
-      '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20,
-  }).addTo(state.map);
+  initBaseLayer();
 
   state.cluster = L.markerClusterGroup({
     maxClusterRadius: 48,

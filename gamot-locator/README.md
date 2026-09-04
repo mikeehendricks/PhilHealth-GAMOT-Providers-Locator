@@ -31,7 +31,7 @@ the official PhilHealth GAMOT provider list and geocoded with coordinates.
 |------------|---------------------------------------------------------|
 | Front-end  | Vanilla JavaScript + [Leaflet](https://leafletjs.com/) (bundled locally) |
 | Back-end   | **Zero-dependency Node.js** HTTP server (`server.js`)   |
-| Map tiles  | CARTO (OpenStreetMap) basemap                           |
+| Map tiles  | OpenStreetMap (primary) + CARTO (automatic fallback) — no API key required |
 | Routing    | [OSRM](https://project-osrm.org/) (turn-by-turn)        |
 | Data       | `data/providers.json` (2,328 geocoded providers)        |
 
