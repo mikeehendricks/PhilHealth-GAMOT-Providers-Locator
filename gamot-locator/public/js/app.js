@@ -101,7 +101,7 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = "1.4.2";
+const APP_VERSION = "1.5.0";
 
 // Classic teardrop "location pin" for the user's real-time position.
 // Fuchsia so it never gets confused with the blue/green provider pins.

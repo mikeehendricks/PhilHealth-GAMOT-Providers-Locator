@@ -7,6 +7,14 @@ GAMOT.pdf
 uploads/
 *.pdf
 
+# Runtime-generated state (admin accounts, analytics, sessions, geo cache).
+# These are created at runtime under DATA_DIR and must never be committed.
+data/admins.json
+data/analytics.json
+data/sessions.json
+data/geo-cache.json
+data/*.tmp
+
 # Scratch / test output
 test*.js
 screenshot*.png

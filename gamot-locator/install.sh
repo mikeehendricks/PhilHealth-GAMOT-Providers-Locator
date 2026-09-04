@@ -26,6 +26,10 @@ APP_NAME="gamot-locator"
 APP_DIR="/opt/${APP_NAME}"
 APP_USER="${APP_NAME}"
 APP_PORT="${PORT:-3000}"
+# Persistent runtime data (admin accounts, analytics, sessions, geo cache).
+# Kept OUTSIDE APP_DIR so `rsync --delete` on redeploy never wipes it, and it
+# is a dedicated writable path for the hardened systemd unit (ProtectSystem=full).
+DATA_DIR="/var/lib/${APP_NAME}"
 # Routing backend. Defaults to the free OSRM demo server. For production you
 # can point this at a self-hosted OSRM instance, e.g.:
 #   OSRM_URL=http://127.0.0.1:5000
@@ -108,6 +112,14 @@ if ! id -u "${APP_USER}" >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------------
+# 3b. Persistent data directory
+# ---------------------------------------------------------------------------
+say "Creating persistent data directory ${DATA_DIR}…"
+mkdir -p "${DATA_DIR}"
+chown "${APP_USER}:${APP_USER}" "${DATA_DIR}"
+chmod 750 "${DATA_DIR}"
+
+# ---------------------------------------------------------------------------
 # 4. Environment configuration
 # ---------------------------------------------------------------------------
 ENV_FILE="/etc/${APP_NAME}.env"
@@ -116,6 +128,7 @@ cat > "${ENV_FILE}" <<EOF
 # PhilHealth GAMOT Locator configuration
 PORT=${APP_PORT}
 OSRM_URL=${OSRM_URL}
+DATA_DIR=${DATA_DIR}
 EOF
 chmod 600 "${ENV_FILE}"
 
@@ -142,7 +155,8 @@ RestartSec=3
 # Basic hardening
 NoNewPrivileges=true
 ProtectSystem=full
-ReadWritePaths=/tmp
+# The app is read-only under /opt; only the persistent data dir (and /tmp) are writable.
+ReadWritePaths=${DATA_DIR} /tmp
 
 [Install]
 WantedBy=multi-user.target
@@ -175,9 +189,11 @@ fi
 echo
 say "Installation complete!"
 echo "  Application : ${APP_DIR}"
+echo "  Data        : ${DATA_DIR}"
 echo "  Service     : systemctl status ${APP_NAME}"
 echo "  Logs        : journalctl -u ${APP_NAME} -f"
 echo "  Local URL   : http://$(hostname -I 2>/dev/null | awk '{print $1}'):${APP_PORT}"
+echo "  Admin portal: http://$(hostname -I 2>/dev/null | awk '{print $1}'):${APP_PORT}/admin"
 echo
 echo "To change the port or routing backend, edit ${ENV_FILE} and run:"
 echo "  sudo systemctl restart ${APP_NAME}"

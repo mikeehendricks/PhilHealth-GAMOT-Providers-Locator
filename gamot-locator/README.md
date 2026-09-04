@@ -22,6 +22,10 @@ the official PhilHealth GAMOT provider list and geocoded with coordinates.
 - 🏥 Provider details: name, address, contact number, email, accreditation
   expiry, and sector (Private P / Government G).
 - 📱 Responsive layout for desktop and mobile.
+- 🔐 **Admin portal** at `/admin` (not linked from the main site): website
+  view counts (daily / weekly / monthly), a live chart, a realtime visitor
+  table (IP address, approximate location, visit times), and administrator
+  management.
 
 ---
 
@@ -51,10 +55,17 @@ gamot-locator/
 │   └── providers.json      # 2,328 providers with lat/lon
 └── public/
     ├── index.html
+    ├── admin.html          # admin portal (analytics dashboard)
     ├── css/style.css
+    ├── css/admin.css
     ├── js/app.js           # map, search, geolocation, turn-by-turn logic
+    ├── js/admin.js         # admin portal logic
     └── vendor/             # Leaflet + Leaflet.markercluster (bundled)
 ```
+
+The server also writes runtime state (admin accounts, visit analytics,
+sessions, IP geolocation cache) as JSON files under `DATA_DIR` — see
+"Admin portal" below. These files are git-ignored.
 
 ---
 
@@ -65,6 +76,14 @@ gamot-locator/
 | `GET /healthz` | Health check (returns provider count) |
 | `GET /api/providers` | All providers. Optional filters: `q`, `province`, `city`, `region`, `sector`, `limit` |
 | `GET /api/route?from=lat,lon&to=lat,lon&profile=driving` | Turn-by-turn route (proxies to OSRM) |
+| `GET /api/admin/status` | `{ setupRequired }` — is the first admin registered? |
+| `POST /api/admin/register` | One-time first-admin registration (closed once an admin exists) |
+| `POST /api/admin/login` / `logout` | Session sign-in / sign-out (HttpOnly cookie) |
+| `GET /api/admin/me` | Current administrator (auth) |
+| `GET /api/admin/admins` | List administrators (auth) |
+| `GET /api/admin/stats` | Daily / weekly / monthly view counts + 14-day series (auth) |
+| `GET /api/admin/visitors` | Realtime visitors with IP + location (auth) |
+| `POST /api/admin/add-admin` | Add another administrator (auth) |
 
 Examples:
 
@@ -96,6 +115,7 @@ Environment variables:
 | `PORT`    | `3000`                           | HTTP port                      |
 | `HOST`    | `0.0.0.0`                        | Bind address                   |
 | `OSRM_URL`| `https://router.project-osrm.org`| Routing backend (see below)    |
+| `DATA_DIR`| `./data`                         | Where admin/analytics/session state is persisted |
 
 ---
 
@@ -198,6 +218,50 @@ providers list (2,328 entries, updated as of May 31, 2026). Each record:
 Coordinates are the **municipality/city center** for each provider (geocoded
 via OpenStreetMap/Nominatim and Photon). Street-level precision is not
 guaranteed for every entry; treat the map pin as the provider's locality.
+
+---
+
+## Admin portal
+
+The portal lives at `/admin` and is **not linked from the main site** — reach
+it directly, e.g. `https://your-domain.com/admin`.
+
+**First-time setup.** On the first visit, `/admin` shows a one-time
+registration form. Create the first administrator account (email + password
+of at least 10 characters). Once an administrator exists, registration is
+closed and subsequent visits show a sign-in form.
+
+**What it shows** (after sign-in):
+
+- **Views today / this week / this month** — counts of page loads of the main
+  site, plus a 14-day bar chart.
+- **Visitors online** — unique IP addresses seen in the last 5 minutes, with
+  their approximate location (city / region / country, resolved server-side
+  from a free IP-geolocation service) and their first/last-seen times.
+- **Administrators** — list of accounts that can access the portal, plus a
+  form to add more administrators.
+
+**How it's secured** (no third-party dependencies):
+
+- Passwords are hashed with Node's built-in **scrypt** (per-user salt).
+- Sessions use a random 256-bit token in an **HttpOnly, SameSite=Lax** cookie
+  (HMAC not needed — the token is an opaque lookup key stored server-side).
+- State-changing endpoints require a custom `X-Requested-With` header
+  (cross-site requests can't set it), on top of SameSite cookies.
+- Rate limiting on login (10 / 5 min) and registration (5 / hour) to deter
+  brute force.
+
+**Where data is stored.** Admin accounts, visit analytics, sessions, and the
+IP-geolocation cache are written as JSON files under `DATA_DIR`
+(`/var/lib/gamot-locator` in production). This directory lives **outside**
+`/opt/gamot-locator` so that redeploying with the installer (which runs
+`rsync --delete`) never wipes your analytics or admin accounts, and it is
+declared writable in the systemd unit (`ReadWritePaths`) despite
+`ProtectSystem=full`.
+
+> Privacy note: the portal stores visitor IP addresses and approximate
+> locations for the last 90 days of visit records. Local / private IPs are
+> labelled "Local network" and are never sent to a geolocation service.
 
 ---
 

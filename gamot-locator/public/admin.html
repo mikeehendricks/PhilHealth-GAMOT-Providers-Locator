@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d6efd'/%3E%3Cpath d='M9 16h14M16 9v14' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <title>Admin — GAMOT Locator</title>
+  <link rel="stylesheet" href="/css/admin.css?v=1.5.0" />
+</head>
+<body>
+  <div class="admin-shell">
+
+    <!-- Setup / Login view -->
+    <div id="view-auth" class="view hidden">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" fill="#1f6dff" />
+            <path d="M12 7v5l3.5 2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <div>
+            <h1 id="auth-title">GAMOT Locator Admin</h1>
+            <p id="auth-subtitle">Loading…</p>
+          </div>
+        </div>
+
+        <form id="auth-form" autocomplete="off">
+          <input type="hidden" id="auth-mode" value="login" />
+          <label class="field">
+            <span>Email address</span>
+            <input type="email" id="auth-email" required autocomplete="username" placeholder="you@example.com" />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input type="password" id="auth-password" required minlength="10" autocomplete="new-password" placeholder="At least 10 characters" />
+          </label>
+          <p class="field-hint" id="auth-hint"></p>
+          <button type="submit" class="btn btn-primary" id="auth-submit">Sign in</button>
+          <p class="auth-error" id="auth-error"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Dashboard view -->
+    <div id="view-dashboard" class="view hidden">
+      <header class="topbar">
+        <div class="topbar-brand">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" fill="#1f6dff" />
+            <path d="M12 7v5l3.5 2" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>GAMOT Locator Admin</span>
+        </div>
+        <div class="topbar-right">
+          <span class="admin-email" id="admin-email"></span>
+          <button class="btn btn-ghost" id="btn-logout">Sign out</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <h2>Website traffic</h2>
+
+        <section class="stat-grid">
+          <div class="stat-card">
+            <span class="stat-label">Views today</span>
+            <span class="stat-value" id="stat-daily">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Views this week</span>
+            <span class="stat-value" id="stat-weekly">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Views this month</span>
+            <span class="stat-value" id="stat-monthly">—</span>
+          </div>
+          <div class="stat-card stat-card-accent">
+            <span class="stat-label">Visitors online now</span>
+            <span class="stat-value" id="stat-online">—</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3>Views — last 14 days</h3>
+            <span class="muted" id="stats-updated"></span>
+          </div>
+          <div class="chart" id="chart" aria-label="Bar chart of daily views over the last 14 days"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3>Visitors online</h3>
+            <span class="live-dot"><i></i> live</span>
+          </div>
+          <p class="muted panel-sub">Unique visitors seen in the last 5 minutes, with IP address and approximate location.</p>
+          <div class="table-wrap">
+            <table class="visitor-table">
+              <thead>
+                <tr>
+                  <th>IP address</th>
+                  <th>Location</th>
+                  <th>First seen</th>
+                  <th>Last seen</th>
+                  <th class="num">Views</th>
+                </tr>
+              </thead>
+              <tbody id="visitor-rows">
+                <tr><td colspan="5" class="empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h3>Administrators</h3>
+          </div>
+          <div class="table-wrap">
+            <table class="visitor-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="admin-rows">
+                <tr><td colspan="3" class="empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <form id="add-admin-form" class="add-admin" autocomplete="off">
+            <label class="field">
+              <span>Add administrator</span>
+              <input type="email" id="new-admin-email" required placeholder="new-admin@example.com" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span>Password</span>
+              <input type="password" id="new-admin-password" required minlength="10" autocomplete="new-password" placeholder="At least 10 characters" />
+            </label>
+            <button type="submit" class="btn btn-primary">Add</button>
+            <p class="auth-error" id="add-admin-error"></p>
+          </form>
+        </section>
+      </main>
+    </div>
+
+  </div>
+
+  <script src="/js/admin.js?v=1.5.0"></script>
+</body>
+</html>
