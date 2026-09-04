@@ -1,7 +1,5 @@
 # PhilHealth GAMOT Package Providers — Locator
 
-Copyright © 2026, Mikee Hendricks
-
 A web application to locate accredited **PhilHealth GAMOT Package providers**
 (pharmacies, hospitals, and rural health units) across the Philippines, find
 the nearest one to your current location, and get **turn-by-turn navigation**

@@ -90,8 +90,14 @@ async function init() {
   $('loading').hidden = true;
 }
 
-// Tile providers — all free, no API key required. OSM is the primary
-// (guaranteed keyless); CARTO is the automatic fallback if OSM tiles fail.
+// ---------------------------------------------------------------------------
+// Basemap tiles — every provider below is 100% free and requires NO API key.
+// OSM is primary; Esri is the automatic fallback if OSM tiles fail to load.
+// NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
+// watermark tiles that cannot be detected as errors.
+// ---------------------------------------------------------------------------
+const APP_VERSION = '1.2.0';
+
 const TILE_PROVIDERS = [
   {
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -100,36 +106,45 @@ const TILE_PROVIDERS = [
     maxZoom: 19,
   },
   {
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
-      '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20,
+      'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom',
+    maxZoom: 19,
+  },
+  {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution:
+      'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    maxZoom: 19,
   },
 ];
 
 function initBaseLayer() {
   let providerIndex = 0;
-  let failStreak = 0;
   let layer = null;
+  let failStreak = 0;
+  const MAX_STREAK = 3;
 
   const loadProvider = (i) => {
+    if (i >= TILE_PROVIDERS.length) return;
     const p = TILE_PROVIDERS[i];
-    const opts = { attribution: p.attribution, maxZoom: p.maxZoom };
-    if (p.subdomains) opts.subdomains = p.subdomains;
-    layer = L.tileLayer(p.url, opts);
-    // If the active provider repeatedly fails (e.g. blocked CDN), switch
-    // to the next one so the map never stays blank.
+    if (layer) state.map.removeLayer(layer);
+    layer = L.tileLayer(p.url, {
+      attribution: p.attribution,
+      maxZoom: p.maxZoom,
+      maxNativeZoom: p.maxZoom,
+    });
     layer.on('tileerror', () => {
       failStreak++;
-      if (failStreak >= 4 && providerIndex < TILE_PROVIDERS.length - 1) {
-        state.map.removeLayer(layer);
+      if (failStreak >= MAX_STREAK) {
         failStreak = 0;
         providerIndex++;
         loadProvider(providerIndex);
       }
     });
+    // Reset the streak whenever a tile actually loads, so transient
+    // network blips don't trigger a needless provider switch.
+    layer.on('tileload', () => { failStreak = 0; });
     layer.addTo(state.map);
   };
 
@@ -614,6 +629,9 @@ function toast(msg, kind) {
 // Wire up events
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
+  const vn = document.getElementById('version-note');
+  if (vn) vn.textContent = 'v' + APP_VERSION;
+  console.log('[GAMOT Locator] version ' + APP_VERSION);
   init();
 
   $('search-input').addEventListener('input', debounce(() => {
