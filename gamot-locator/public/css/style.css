@@ -277,24 +277,14 @@ html, body {
 
 /* "You are here" — the user's real-time location. Distinct fuchsia color so it
    can never be confused with the blue (private) or green (government) pins. */
-.user-marker {
+/* "You are here" teardrop pin */
+.user-pin {
   display: block;
-  width: 18px; height: 18px;
-  background: #d946ef;              /* fuchsia — distinct from providers */
-  border: 3px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px rgba(217, 70, 239, 0.35);
+  width: 30px; height: 42px;
+  line-height: 0;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
 }
-.user-marker::after {
-  content: "";
-  position: absolute; inset: -14px; border-radius: 50%;
-  border: 3px solid rgba(217, 70, 239, 0.55);
-  animation: pulse 2s ease-out infinite;
-}
-@keyframes pulse {
-  0% { transform: scale(0.6); opacity: 1; }
-  100% { transform: scale(1.6); opacity: 0; }
-}
+.user-pin svg { display: block; }
 
 /* Accuracy circle around the user location (semi-transparent) */
 .user-accuracy {
@@ -348,7 +338,13 @@ html, body {
   border-radius: 50%; border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
 }
-.legend-you { background: #d946ef; box-shadow: 0 0 0 3px rgba(217,70,239,0.3); }
+.legend-you {
+  background: #d946ef;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+}
 .legend-private { background: var(--primary); }
 .legend-gov { background: var(--gov); }
 .legend-label { color: var(--text); }

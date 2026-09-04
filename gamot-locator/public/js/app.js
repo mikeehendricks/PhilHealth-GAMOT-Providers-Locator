@@ -97,7 +97,16 @@ async function init() {
 // NOTE: CARTO was removed entirely — it returns HTTP 200 "API key required"
 // watermark tiles that cannot be detected as errors.
 // ---------------------------------------------------------------------------
-const APP_VERSION = "1.3.2";
+const APP_VERSION = "1.3.3";
+
+// Classic teardrop "location pin" for the user's real-time position.
+// Fuchsia so it never gets confused with the blue/green provider pins.
+const USER_PIN_SVG =
+  '<svg viewBox="0 0 24 34" width="30" height="42" aria-hidden="true">' +
+  '<path d="M12 1C5.37 1 0 6.37 0 13c0 8.4 12 20 12 20s12-11.6 12-20C24 6.37 18.63 1 12 1z" ' +
+  'fill="#d946ef" stroke="#ffffff" stroke-width="2"/>' +
+  '<circle cx="12" cy="13" r="5" fill="#ffffff"/>' +
+  '</svg>';
 
 const TILE_PROVIDERS = [
   {
@@ -405,9 +414,9 @@ function placeUserMarker() {
   if (!state.userMarker) {
     const icon = L.divIcon({
       className: 'user-marker-wrap',
-      html: '<span class="user-marker"></span><span class="user-label">You are here</span>',
-      iconSize: [90, 44],
-      iconAnchor: [45, 9],
+      html: '<span class="user-pin">' + USER_PIN_SVG + '</span><span class="user-label">You are here</span>',
+      iconSize: [90, 66],
+      iconAnchor: [45, 44],
     });
     state.userMarker = L.marker([state.userPos.lat, state.userPos.lon], {
       icon,
@@ -415,7 +424,7 @@ function placeUserMarker() {
       interactive: false,
     }).addTo(state.map);
     state.userMarker.bindTooltip('Your current location', {
-      permanent: false, direction: 'top', offset: [0, -18],
+      permanent: false, direction: 'top', offset: [0, -34],
     });
   } else {
     state.userMarker.setLatLng([state.userPos.lat, state.userPos.lon]);
