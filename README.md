@@ -10,6 +10,23 @@ the official PhilHealth GAMOT provider list and geocoded with coordinates.
 
 ---
 
+## Repository layout
+
+```
+.
+├── gamot-locator/        # the application (server, front-end, installer)
+│   ├── server.js
+│   ├── install.sh
+│   ├── data/providers.json
+│   └── public/
+└── uploads/              # source materials (GAMOT.pdf, screenshots)
+```
+
+All application code lives under `gamot-locator/`. The `install.sh` script and
+`server.js` referenced below are in that directory.
+
+---
+
 ## Features
 
 - 🗺️ Interactive map of all 2,328 providers (with marker clustering).
@@ -103,7 +120,8 @@ curl "http://localhost:3000/api/route?from=14.5995,120.9842&to=17.5965,120.6179"
 Requires Node.js ≥ 14 (Node 18/20 LTS recommended).
 
 ```bash
-# From the project directory
+# From the gamot-locator directory
+cd gamot-locator
 node server.js
 # or
 npm start
@@ -134,6 +152,7 @@ Run the bundled installer (it installs Node.js 20 LTS, copies the app to
 service):
 
 ```bash
+cd gamot-locator
 sudo bash install.sh
 ```
 
@@ -202,8 +221,8 @@ restart the service.
 
 ## Data
 
-`data/providers.json` is generated from the official PhilHealth GAMOT package
-providers list (2,328 entries, updated as of May 31, 2026). Each record:
+`gamot-locator/data/providers.json` is generated from the official PhilHealth
+GAMOT package providers list (2,328 entries, updated as of May 31, 2026). Each record:
 
 ```json
 {
