@@ -386,30 +386,43 @@ function resetFilters() {
 // Geolocation + nearest
 // ---------------------------------------------------------------------------
 function locate(onSuccess) {
-  if (!('geolocation' in navigator)) {
-    toast('Geolocation is not supported by this browser.');
+  // Geolocation requires a secure context, including every embedding frame.
+  if (window.isSecureContext === false) {
+    toast('Location requires HTTPS. Open this site directly over HTTPS and try again.', 'error');
+    return;
+  }
+  if (!navigator.geolocation) {
+    toast('Geolocation is not available in this browser. Check your device and browser location settings.', 'error');
     return;
   }
   setLocating(true);
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      setLocating(false);
-      state.userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
-      placeUserMarker();
-      showNearest();
-      state.map.setView([state.userPos.lat, state.userPos.lon], 13);
-      startWatch();
-      if (onSuccess) onSuccess();
-    },
-    (err) => {
-      setLocating(false);
-      const msg = err.code === err.PERMISSION_DENIED
-        ? 'Location permission denied. Please allow location access and try again.'
-        : 'Could not determine your location.';
-      toast(msg, 'error');
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
-  );
+  const success = (pos) => {
+    setLocating(false);
+    state.userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+    placeUserMarker();
+    showNearest();
+    state.map.setView([state.userPos.lat, state.userPos.lon], 13);
+    startWatch();
+    if (onSuccess) onSuccess();
+  };
+  const failure = (err) => {
+    setLocating(false);
+    if (err.code === 1) {
+      const embedded = window.self !== window.top;
+      toast(embedded
+        ? 'Location was blocked. Open this site directly in your browser and check location permissions.'
+        : 'Location was blocked. Check this site’s browser permission and your device’s Location Services for this browser, then try again.', 'error');
+    } else if (err.code === 3) {
+      toast('Finding your location timed out. Check your signal and try again.', 'error');
+    } else {
+      toast('Your location is unavailable. Check that Location Services are enabled and try again.', 'error');
+    }
+  };
+  // Request a quick network or GPS fix first. High-accuracy-only requests can
+  // fail indoors or take too long on mobile; the watch can refine the fix.
+  navigator.geolocation.getCurrentPosition(success, failure, {
+    enableHighAccuracy: false, timeout: 20000, maximumAge: 30000,
+  });
 }
 
 function startWatch() {

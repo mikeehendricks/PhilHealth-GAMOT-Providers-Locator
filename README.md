@@ -387,3 +387,17 @@ licenses:
 - Provider data © PhilHealth
 - [Leaflet](https://leafletjs.com/) (BSD-2-Clause)
 - [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) (MIT)
+
+### Mobile location troubleshooting
+
+The Locate Me button requires HTTPS and permission from both the browser and
+operating system. On iPhone, check **Settings → Privacy & Security → Location
+Services**, then allow location for the browser (for Safari, **Safari Websites**).
+In Safari, check the site's Location permission in the page settings as well.
+On Android, enable device Location and allow location for the browser and this
+site. If the site is inside another app or an embedded frame, open it directly
+in Safari or Chrome; the embedding app or page can block location even when the
+site has permission. The app requests an initial approximate fix, then uses GPS
+updates to improve it. A denied permission cannot be overridden by the site.
+
+Run the location logic checks with `node gamot-locator/tests/geolocation.test.js`.
